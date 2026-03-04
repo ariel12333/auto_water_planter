@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 Sensor Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a1a;
+            --bg-card: #12122a;
+            --bg-card-hover: #1a1a3a;
+            --border: #1e1e3e;
+            --text-primary: #e8e8f0;
+            --text-secondary: #8888aa;
+            --text-muted: #555577;
+            --accent-blue: #4fc3f7;
+            --accent-green: #66bb6a;
+            --accent-orange: #ffa726;
+            --accent-red: #ef5350;
+            --accent-purple: #ab47bc;
+            --accent-teal: #26c6da;
+            --glow-blue: rgba(79, 195, 247, 0.15);
+            --glow-green: rgba(102, 187, 106, 0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Background gradient animation */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                radial-gradient(ellipse at 20% 50%, rgba(79, 195, 247, 0.04) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(171, 71, 188, 0.04) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 80%, rgba(102, 187, 106, 0.03) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.4rem;
+        }
+
+        header p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            font-weight: 500;
+            margin-top: 0.7rem;
+            transition: all 0.3s ease;
+        }
+
+        .status-badge.waiting {
+            background: rgba(255, 167, 38, 0.12);
+            color: var(--accent-orange);
+            border: 1px solid rgba(255, 167, 38, 0.25);
+        }
+
+        .status-badge.connected {
+            background: rgba(102, 187, 106, 0.12);
+            color: var(--accent-green);
+            border: 1px solid rgba(102, 187, 106, 0.25);
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .waiting .pulse-dot {
+            background: var(--accent-orange);
+        }
+
+        .connected .pulse-dot {
+            background: var(--accent-green);
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.4;
+                transform: scale(0.8);
+            }
+        }
+
+        /* Metric cards grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.2rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card:hover {
+            background: var(--bg-card-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .metric-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            border-radius: 2px 2px 0 0;
+        }
+
+        .metric-card.temp::after {
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+        }
+
+        .metric-card.rssi::after {
+            background: linear-gradient(90deg, var(--accent-green), var(--accent-blue));
+        }
+
+        .metric-card.uptime::after {
+            background: linear-gradient(90deg, var(--accent-orange), var(--accent-red));
+        }
+
+        .metric-card.moisture::after {
+            background: linear-gradient(90deg, var(--accent-teal), var(--accent-green));
+        }
+
+        .metric-card.moisture .metric-value {
+            color: var(--accent-teal);
+        }
+
+        .metric-card.packets::after {
+            background: linear-gradient(90deg, var(--accent-purple), var(--accent-blue));
+        }
+
+        .metric-label {
+            font-size: 0.78rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-secondary);
+            margin-bottom: 0.6rem;
+        }
+
+        .metric-value {
+            font-size: 2.4rem;
+            font-weight: 700;
+            line-height: 1.1;
+            margin-bottom: 0.3rem;
+        }
+
+        .metric-card.temp .metric-value {
+            color: var(--accent-blue);
+        }
+
+        .metric-card.rssi .metric-value {
+            color: var(--accent-green);
+        }
+
+        .metric-card.uptime .metric-value {
+            color: var(--accent-orange);
+        }
+
+        .metric-card.packets .metric-value {
+            color: var(--accent-purple);
+        }
+
+        .metric-unit {
+            font-size: 1.1rem;
+            font-weight: 400;
+            opacity: 0.6;
+        }
+
+        .metric-sub {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
+
+        /* Chart area */
+        .chart-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .chart-title {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .chart-legend {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+        }
+
+        .legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 4px;
+        }
+
+        canvas#tempChart {
+            width: 100% !important;
+            height: 250px !important;
+        }
+
+        /* Live feed */
+        .feed-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+        }
+
+        .feed-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .feed-list {
+            max-height: 300px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) transparent;
+        }
+
+        .feed-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.7rem 0.8rem;
+            border-radius: 10px;
+            transition: background 0.2s;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            animation: fadeIn 0.3s ease;
+        }
+
+        .feed-item:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .feed-time {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-family: 'Courier New', monospace;
+            min-width: 70px;
+        }
+
+        .feed-device {
+            font-size: 0.75rem;
+            color: var(--accent-purple);
+            background: rgba(171, 71, 188, 0.1);
+            padding: 0.15rem 0.5rem;
+            border-radius: 6px;
+            min-width: 90px;
+            text-align: center;
+        }
+
+        .feed-data {
+            font-size: 0.82rem;
+            color: var(--text-primary);
+            flex: 1;
+        }
+
+        .feed-data span {
+            margin-right: 1rem;
+        }
+
+        .feed-data .val {
+            font-weight: 600;
+        }
+
+        .feed-data .temp-val {
+            color: var(--accent-blue);
+        }
+
+        .feed-data .rssi-val {
+            color: var(--accent-green);
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-muted);
+        }
+
+        .empty-state .icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .empty-state p {
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .container {
+                padding: 1rem;
+            }
+
+            header h1 {
+                font-size: 1.5rem;
+            }
+
+            .metric-value {
+                font-size: 1.8rem;
+            }
+
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.8rem;
+            }
+
+            .metric-card {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>⚡ ESP32 Sensor Hub</h1>
+            <p>Real-time sensor data from your microcontroller</p>
+            <div class="status-badge waiting" id="statusBadge">
+                <span class="pulse-dot"></span>
+                <span id="statusText">Waiting for data...</span>
+            </div>
+        </header>
+
+        <div class="metrics-grid">
+            <div class="metric-card temp">
+                <div class="metric-label">🌡️ Temperature</div>
+                <div class="metric-value" id="tempValue">--<span class="metric-unit">°C</span></div>
+                <div class="metric-sub" id="tempRange">No data</div>
+            </div>
+            <div class="metric-card moisture">
+                <div class="metric-label">💧 Soil Moisture</div>
+                <div class="metric-value" id="moistureValue">--<span class="metric-unit">%</span></div>
+                <div class="metric-sub" id="moistureQuality">No data</div>
+            </div>
+            <div class="metric-card rssi">
+                <div class="metric-label">📶 WiFi Signal</div>
+                <div class="metric-value" id="rssiValue">--<span class="metric-unit"> dBm</span></div>
+                <div class="metric-sub" id="rssiQuality">No data</div>
+            </div>
+            <div class="metric-card uptime">
+                <div class="metric-label">⏱️ ESP32 Uptime</div>
+                <div class="metric-value" id="uptimeValue">--</div>
+                <div class="metric-sub" id="uptimeSub">No data</div>
+            </div>
+            <div class="metric-card packets">
+                <div class="metric-label">📡 Packets Received</div>
+                <div class="metric-value" id="packetsValue">0</div>
+                <div class="metric-sub" id="packetsSub">Waiting...</div>
+            </div>
+        </div>
+
+        <div class="chart-section">
+            <div class="chart-header">
+                <span class="chart-title">📈 Temperature History</span>
+                <div class="chart-legend">
+                    <span><span class="legend-dot" style="background:var(--accent-blue)"></span>Temperature</span>
+                </div>
+            </div>
+            <canvas id="tempChart"></canvas>
+        </div>
+
+        <div class="feed-section">
+            <div class="feed-title">📋 Live Feed</div>
+            <div id="feedList" class="feed-list">
+                <div class="empty-state">
+                    <div class="icon">📡</div>
+                    <p>No sensor data received yet.<br>Make sure your ESP32 is connected to WiFi and pointing to this
+                        hub.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ── State ──
+        const feedList = document.getElementById('feedList');
+        const MAX_FEED_ITEMS = 50;
+        const chartData = { labels: [], temps: [] };
+        const MAX_CHART_POINTS = 60;
+        let totalPackets = 0;
+        let hasData = false;
+        let canvas, ctx;
+
+        // ── Chart ──
+        function initChart() {
+            canvas = document.getElementById('tempChart');
+            ctx = canvas.getContext('2d');
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+        }
+
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width - 48;
+            canvas.height = 250;
+            drawChart();
+        }
+
+        function drawChart() {
+            if (!ctx) return;
+            const w = canvas.width;
+            const h = canvas.height;
+            const padding = { top: 20, right: 20, bottom: 30, left: 50 };
+
+            ctx.clearRect(0, 0, w, h);
+
+            if (chartData.temps.length < 2) {
+                ctx.fillStyle = '#555577';
+                ctx.font = '14px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('Waiting for data...', w / 2, h / 2);
+                return;
+            }
+
+            const plotW = w - padding.left - padding.right;
+            const plotH = h - padding.top - padding.bottom;
+            const temps = chartData.temps;
+            const minT = Math.min(...temps) - 1;
+            const maxT = Math.max(...temps) + 1;
+            const rangeT = maxT - minT || 1;
+
+            // Grid lines
+            ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+            ctx.lineWidth = 1;
+            const gridLines = 5;
+            for (let i = 0; i <= gridLines; i++) {
+                const y = padding.top + (plotH / gridLines) * i;
+                ctx.beginPath();
+                ctx.moveTo(padding.left, y);
+                ctx.lineTo(w - padding.right, y);
+                ctx.stroke();
+
+                // Y labels
+                const val = maxT - (rangeT / gridLines) * i;
+                ctx.fillStyle = '#555577';
+                ctx.font = '11px Inter, sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText(val.toFixed(1) + '°', padding.left - 8, y + 4);
+            }
+
+            // Gradient fill
+            const gradient = ctx.createLinearGradient(0, padding.top, 0, h - padding.bottom);
+            gradient.addColorStop(0, 'rgba(79, 195, 247, 0.2)');
+            gradient.addColorStop(1, 'rgba(79, 195, 247, 0.0)');
+
+            ctx.beginPath();
+            ctx.moveTo(padding.left, h - padding.bottom);
+            for (let i = 0; i < temps.length; i++) {
+                const x = padding.left + (plotW / (temps.length - 1)) * i;
+                const y = padding.top + plotH - ((temps[i] - minT) / rangeT) * plotH;
+                ctx.lineTo(x, y);
+            }
+            ctx.lineTo(padding.left + plotW, h - padding.bottom);
+            ctx.closePath();
+            ctx.fillStyle = gradient;
+            ctx.fill();
+
+            // Line
+            ctx.beginPath();
+            for (let i = 0; i < temps.length; i++) {
+                const x = padding.left + (plotW / (temps.length - 1)) * i;
+                const y = padding.top + plotH - ((temps[i] - minT) / rangeT) * plotH;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.strokeStyle = '#4fc3f7';
+            ctx.lineWidth = 2.5;
+            ctx.lineJoin = 'round';
+            ctx.stroke();
+
+            // Latest point glow
+            if (temps.length > 0) {
+                const lastX = padding.left + plotW;
+                const lastY = padding.top + plotH - ((temps[temps.length - 1] - minT) / rangeT) * plotH;
+                ctx.beginPath();
+                ctx.arc(lastX, lastY, 5, 0, Math.PI * 2);
+                ctx.fillStyle = '#4fc3f7';
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(lastX, lastY, 10, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(79, 195, 247, 0.2)';
+                ctx.fill();
+            }
+
+            // X labels (time)
+            ctx.fillStyle = '#555577';
+            ctx.font = '10px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            const labelStep = Math.max(1, Math.floor(chartData.labels.length / 6));
+            for (let i = 0; i < chartData.labels.length; i += labelStep) {
+                const x = padding.left + (plotW / (chartData.labels.length - 1)) * i;
+                ctx.fillText(chartData.labels[i], x, h - 8);
+            }
+        }
+
+        // ── RSSI quality description ──
+        function rssiQuality(rssi) {
+            if (rssi >= -50) return '🟢 Excellent';
+            if (rssi >= -60) return '🟢 Good';
+            if (rssi >= -70) return '🟡 Fair';
+            if (rssi >= -80) return '🟠 Weak';
+            return '🔴 Very weak';
+        }
+
+        function moistureQuality(m) {
+            if (m >= 70) return '🟢 Wet';
+            if (m >= 40) return '🟢 Good';
+            if (m >= 20) return '🟡 Dry';
+            return '🔴 Very dry — needs water!';
+        }
+
+        // ── Format uptime ──
+        function formatUptime(seconds) {
+            if (seconds < 60) return seconds + 's';
+            if (seconds < 3600) return Math.floor(seconds / 60) + 'm ' + (seconds % 60) + 's';
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            return h + 'h ' + m + 'm';
+        }
+
+        // ── Update UI with new data ──
+        function updateUI(data) {
+            if (!hasData) {
+                hasData = true;
+                const badge = document.getElementById('statusBadge');
+                badge.classList.remove('waiting');
+                badge.classList.add('connected');
+                document.getElementById('statusText').textContent = 'Receiving data';
+            }
+
+            totalPackets++;
+
+            // Metrics
+            document.getElementById('tempValue').innerHTML =
+                (data.temperature != null ? data.temperature.toFixed(1) : '--') +
+                '<span class="metric-unit">°C</span>';
+
+            document.getElementById('moistureValue').innerHTML =
+                (data.moisture != null ? data.moisture : '--') +
+                '<span class="metric-unit">%</span>';
+
+            document.getElementById('moistureQuality').textContent =
+                data.moisture != null ? moistureQuality(data.moisture) : 'No data';
+
+            document.getElementById('rssiValue').innerHTML =
+                (data.rssi != null ? data.rssi : '--') +
+                '<span class="metric-unit"> dBm</span>';
+
+            document.getElementById('rssiQuality').textContent =
+                data.rssi != null ? rssiQuality(data.rssi) : 'No data';
+
+            document.getElementById('uptimeValue').textContent =
+                data.uptime != null ? formatUptime(data.uptime) : '--';
+
+            document.getElementById('uptimeSub').textContent =
+                data.uptime != null ? data.uptime + ' seconds' : 'No data';
+
+            document.getElementById('packetsValue').textContent = totalPackets;
+            document.getElementById('packetsSub').textContent =
+                'Last: ' + new Date().toLocaleTimeString();
+
+            // Chart
+            const timeLabel = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            chartData.labels.push(timeLabel);
+            chartData.temps.push(data.temperature);
+            if (chartData.labels.length > MAX_CHART_POINTS) {
+                chartData.labels.shift();
+                chartData.temps.shift();
+            }
+            drawChart();
+
+            // Feed
+            const feedHTML = feedList.innerHTML;
+            if (feedHTML.includes('empty-state')) feedList.innerHTML = '';
+
+            const item = document.createElement('div');
+            item.className = 'feed-item';
+            item.innerHTML = `
+        <span class="feed-time">${timeLabel}</span>
+        <span class="feed-device">${data.device_id || 'unknown'}</span>
+        <span class="feed-data">
+          <span>🌡️ <span class="val temp-val">${data.temperature?.toFixed(1) ?? '--'}°C</span></span>
+          <span>💧 <span class="val" style="color:var(--accent-teal)">${data.moisture ?? '--'}%</span></span>
+          <span>📶 <span class="val rssi-val">${data.rssi ?? '--'} dBm</span></span>
+          <span>⏱️ ${data.uptime != null ? formatUptime(data.uptime) : '--'}</span>
+        </span>
+      `;
+            feedList.insertBefore(item, feedList.firstChild);
+
+            // Trim feed
+            while (feedList.children.length > MAX_FEED_ITEMS) {
+                feedList.removeChild(feedList.lastChild);
+            }
+        }
+
+        // ── Fetch stats for temperature range ──
+        async function fetchStats() {
+            try {
+                const res = await fetch('/api/stats');
+                const stats = await res.json();
+                if (stats.temperature) {
+                    document.getElementById('tempRange').textContent =
+                        `Min: ${stats.temperature.min.toFixed(1)}° / Max: ${stats.temperature.max.toFixed(1)}° / Avg: ${stats.temperature.avg}°`;
+                }
+            } catch (_) { }
+        }
+
+        // ── Poll for new data ──
+        let lastTimestamp = null;
+
+        async function poll() {
+            try {
+                const res = await fetch('/api/sensor-data/latest');
+                const data = await res.json();
+                if (data && data.timestamp && data.timestamp !== lastTimestamp) {
+                    lastTimestamp = data.timestamp;
+                    updateUI(data);
+                    fetchStats();
+                }
+            } catch (_) { }
+        }
+
+        // ── Init ──
+        initChart();
+        setInterval(poll, 1000);
+        poll();
+    </script>
+</body>
+
+</html>

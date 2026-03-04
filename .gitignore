@@ -1,0 +1,28 @@
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# VS Code
+.vscode/
+
+# IDE
+.idea/
+
+# Build
+build/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary
+*.swp
+*.swo
+*~
+
+# Node
+node_modules/
+
+# Secrets (use config.h.example as template)
+include/config.h

@@ -1,0 +1,32 @@
+#ifndef CONFIG_H
+#define CONFIG_H
+
+// ============================================================
+// WiFi Configuration
+// ============================================================
+// Replace with your WiFi network credentials
+#define WIFI_SSID     "YOUR_WIFI_SSID"
+#define WIFI_PASSWORD "YOUR_WIFI_PASSWORD"
+
+// ============================================================
+// Central Hub Configuration
+// ============================================================
+// The IP address / hostname of the computer running the web app
+// This is where sensor data will be sent via HTTP POST
+#define HUB_HOST "YOUR_HUB_IP"
+#define HUB_PORT 8080
+#define HUB_ENDPOINT "/api/sensor-data"
+
+// ============================================================
+// Sensor Configuration
+// ============================================================
+// How often to read + send sensor data (in milliseconds)
+#define SENSOR_READ_INTERVAL_MS 2000
+
+// Built-in LED pin (classic ESP32 dev boards typically use GPIO 2)
+#define LED_PIN 2
+
+// Soil moisture sensor analog pin (D34 / GPIO34 — ADC input only)
+#define MOISTURE_PIN 34
+
+#endif // CONFIG_H
