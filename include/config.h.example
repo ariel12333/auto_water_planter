@@ -20,13 +20,29 @@
 // ============================================================
 // Sensor Configuration
 // ============================================================
-// How often to read + send sensor data (in milliseconds)
-#define SENSOR_READ_INTERVAL_MS 2000
+// How often to read + send sensor data (in seconds)
+#define SENSOR_READ_INTERVAL_S 10
 
 // Built-in LED pin (classic ESP32 dev boards typically use GPIO 2)
 #define LED_PIN 2
 
 // Soil moisture sensor analog pin (D34 / GPIO34 — ADC input only)
 #define MOISTURE_PIN 34
+
+// ============================================================
+// Sleep Configuration
+// ============================================================
+// If SENSOR_READ_INTERVAL_S >= this value, use deep sleep between reads
+// Deep sleep: ~10µA draw
+//   Enter: ~1ms  |  Wake: ~3-5s (full reboot + WiFi reconnect)
+//   Best for intervals > 2 min where the boot cost is negligible
+#define DEEP_SLEEP_THRESHOLD_S 120
+
+// If SENSOR_READ_INTERVAL_S >= this value (but below deep sleep),
+// use light sleep between reads
+// Light sleep: ~2mA draw
+//   Enter: ~1-3ms  |  Wake: ~1ms (resumes where it left off)
+//   WiFi may stay associated — no reconnect overhead
+#define LIGHT_SLEEP_THRESHOLD_S 15
 
 #endif // CONFIG_H

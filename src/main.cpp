@@ -1,8 +1,13 @@
 /*
- * ESP32-C3 Sensor Controller
+ * ESP32 Sensor Controller
  * ===========================
  * Reads sensor data and sends it to a central hub via HTTP POST.
- * Blinks the onboard LED to show it's alive.
+ * Supports deep sleep, light sleep, and active modes based on config.
+ *
+ * Sleep behaviour (configured in config.h):
+ *   - interval >= DEEP_SLEEP_THRESHOLD_S  → deep sleep between readings
+ *   - interval >= LIGHT_SLEEP_THRESHOLD_S → light sleep between readings
+ *   - interval < LIGHT_SLEEP_THRESHOLD_S  → stays awake, polls in loop()
  *
  * Getting started:
  *   1. Edit include/config.h with your WiFi credentials and hub IP
@@ -15,6 +20,7 @@
 #include <Arduino.h>
 #include <HTTPClient.h>
 #include <WiFi.h>
+#include <esp_sleep.h>
 #include <esp_wifi.h>
 
 // ── Forward declarations ────────────────────────────────────
@@ -23,67 +29,156 @@ void blinkLED(int times, int delayMs);
 float readTemperature();
 int readMoisture();
 void sendSensorData(float temperature, int moisture);
+void readAndSend();
+void enterDeepSleep();
+void enterLightSleep();
+
+// ── Compile-time sleep mode selection ───────────────────────
+#define SLEEP_MODE_NONE 0
+#define SLEEP_MODE_LIGHT 1
+#define SLEEP_MODE_DEEP 2
+
+#if SENSOR_READ_INTERVAL_S >= DEEP_SLEEP_THRESHOLD_S
+#define CURRENT_SLEEP_MODE SLEEP_MODE_DEEP
+#elif SENSOR_READ_INTERVAL_S >= LIGHT_SLEEP_THRESHOLD_S
+#define CURRENT_SLEEP_MODE SLEEP_MODE_LIGHT
+#else
+#define CURRENT_SLEEP_MODE SLEEP_MODE_NONE
+#endif
+
+// ── RTC memory — survives deep sleep ────────────────────────
+RTC_DATA_ATTR int bootCount = 0;
 
 // ── Global state ────────────────────────────────────────────
 unsigned long lastSensorRead = 0;
 bool ledState = false;
 
 // ============================================================
-// Setup — runs once on boot
+// Setup — runs once on boot (and on every deep sleep wake)
 // ============================================================
 void setup() {
   Serial.begin(115200);
-  delay(1000); // Give serial monitor time to connect
+  delay(500);
+
+  bootCount++;
 
   Serial.println();
   Serial.println("========================================");
   Serial.println("  ESP32 Sensor Controller");
+  Serial.printf("  Boot #%d | Interval: %ds", bootCount,
+                SENSOR_READ_INTERVAL_S);
+
+#if CURRENT_SLEEP_MODE == SLEEP_MODE_DEEP
+  Serial.println(" | Mode: DEEP SLEEP");
+#elif CURRENT_SLEEP_MODE == SLEEP_MODE_LIGHT
+  Serial.println(" | Mode: LIGHT SLEEP");
+#else
+  Serial.println(" | Mode: ACTIVE");
+#endif
+
   Serial.println("========================================");
   Serial.println();
 
   // Configure LED
   pinMode(LED_PIN, OUTPUT);
-  blinkLED(3, 200); // Quick triple-blink to show we're alive
+  blinkLED(2, 150);
 
   // Connect to WiFi
   connectWiFi();
 
   Serial.println();
-  Serial.println("Setup complete! Starting sensor loop...");
+  Serial.println("Setup complete!");
   Serial.println("────────────────────────────────────────");
+
+  // In deep sleep mode: read/send immediately, then sleep
+  // (loop() never runs meaningfully in deep sleep mode)
+#if CURRENT_SLEEP_MODE == SLEEP_MODE_DEEP
+  readAndSend();
+  enterDeepSleep();
+#endif
 }
 
 // ============================================================
-// Loop — runs continuously
+// Loop — only used for ACTIVE and LIGHT SLEEP modes
 // ============================================================
 void loop() {
+#if CURRENT_SLEEP_MODE == SLEEP_MODE_DEEP
+  // Should never reach here — deep sleep resets the chip
+  enterDeepSleep();
+  return;
+#endif
+
   // Reconnect WiFi if disconnected
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("[WARN] WiFi disconnected, reconnecting...");
     connectWiFi();
   }
 
-  // Read and send sensor data at the configured interval
+#if CURRENT_SLEEP_MODE == SLEEP_MODE_LIGHT
+  // Light sleep mode: read, send, then sleep
+  readAndSend();
+  enterLightSleep();
+#else
+  // Active mode: poll at the configured interval using millis()
   unsigned long now = millis();
-  if (now - lastSensorRead >= SENSOR_READ_INTERVAL_MS) {
+  if (now - lastSensorRead >= (unsigned long)SENSOR_READ_INTERVAL_S * 1000UL) {
     lastSensorRead = now;
-
-    // Read sensors
-    float temperature = readTemperature();
-    int moisture = readMoisture();
-
-    // Print to serial
-    Serial.printf("[DATA] Temp: %.1f°C  |  Moisture: %d%%  |  RSSI: %d dBm  |  "
-                  "Uptime: %lu s\n",
-                  temperature, moisture, WiFi.RSSI(), now / 1000);
-
-    // Send to hub
-    sendSensorData(temperature, moisture);
-
-    // Toggle LED to show activity
-    ledState = !ledState;
-    digitalWrite(LED_PIN, ledState ? HIGH : LOW);
+    readAndSend();
   }
+#endif
+}
+
+// ============================================================
+// Read sensors and send data
+// ============================================================
+void readAndSend() {
+  float temperature = readTemperature();
+  int moisture = readMoisture();
+
+  Serial.printf("[DATA] Temp: %.1f°C  |  Moisture: %d%%  |  RSSI: %d dBm  |  "
+                "Uptime: %lu s  |  Boot: %d\n",
+                temperature, moisture, WiFi.RSSI(), millis() / 1000, bootCount);
+
+  sendSensorData(temperature, moisture);
+
+  // Blink LED to show activity
+  ledState = !ledState;
+  digitalWrite(LED_PIN, ledState ? HIGH : LOW);
+}
+
+// ============================================================
+// Deep sleep — powers off CPUs, RAM, WiFi (~10µA)
+// Full reboot on wake — setup() runs again
+// ============================================================
+void enterDeepSleep() {
+  unsigned long sleepUs = (unsigned long)SENSOR_READ_INTERVAL_S * 1000000ULL;
+  Serial.printf("[SLEEP] Deep sleep for %d seconds...\n",
+                SENSOR_READ_INTERVAL_S);
+  Serial.flush();
+
+  WiFi.disconnect(true);
+  WiFi.mode(WIFI_OFF);
+
+  esp_sleep_enable_timer_wakeup(sleepUs);
+  esp_deep_sleep_start();
+  // Does not return — chip resets on wake
+}
+
+// ============================================================
+// Light sleep — pauses CPU, WiFi may stay associated (~2mA)
+// Resumes execution after the sleep call
+// ============================================================
+void enterLightSleep() {
+  unsigned long sleepUs = (unsigned long)SENSOR_READ_INTERVAL_S * 1000000ULL;
+  Serial.printf("[SLEEP] Light sleep for %d seconds...\n",
+                SENSOR_READ_INTERVAL_S);
+  Serial.flush();
+
+  esp_sleep_enable_timer_wakeup(sleepUs);
+  esp_light_sleep_start();
+
+  // Execution resumes here after wake
+  Serial.println("[SLEEP] Woke up from light sleep");
 }
 
 // ============================================================
@@ -92,12 +187,10 @@ void loop() {
 void connectWiFi() {
   Serial.printf("[WiFi] Connecting to \"%s\"\n", WIFI_SSID);
 
-  // Full reset
-  WiFi.disconnect(true, true); // disconnect + erase stored credentials
+  WiFi.disconnect(true, true);
   delay(200);
   WiFi.mode(WIFI_STA);
 
-  // Register event handler for debug info
   WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info) {
     switch (event) {
     case ARDUINO_EVENT_WIFI_STA_CONNECTED:
@@ -115,19 +208,15 @@ void connectWiFi() {
     }
   });
 
-  // Start WiFi
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   delay(100);
 
-  // Disable PMF (Protected Management Frames) via ESP-IDF API
-  // This fixes "reason 15" on routers using WPA2/WPA3 transition mode
+  // Disable PMF (fixes "reason 15" on WPA2/WPA3 transition routers)
   wifi_config_t wifi_cfg;
   esp_wifi_get_config(WIFI_IF_STA, &wifi_cfg);
   wifi_cfg.sta.pmf_cfg.capable = false;
   wifi_cfg.sta.pmf_cfg.required = false;
   esp_wifi_set_config(WIFI_IF_STA, &wifi_cfg);
-
-  Serial.println("[WiFi] PMF disabled, waiting for connection...");
 
   int attempts = 0;
   while (WiFi.status() != WL_CONNECTED && attempts < 60) {
@@ -139,36 +228,27 @@ void connectWiFi() {
 
   if (WiFi.status() == WL_CONNECTED) {
     Serial.println("[WiFi] Connected!");
-    Serial.printf("[WiFi] IP address: %s\n", WiFi.localIP().toString().c_str());
-    Serial.printf("[WiFi] Signal strength: %d dBm\n", WiFi.RSSI());
-    Serial.printf("[WiFi] MAC: %s\n", WiFi.macAddress().c_str());
+    Serial.printf("[WiFi] IP: %s  |  RSSI: %d dBm\n",
+                  WiFi.localIP().toString().c_str(), WiFi.RSSI());
   } else {
     Serial.println("[WiFi] FAILED!");
-    Serial.printf("[WiFi] Status code: %d\n", WiFi.status());
-    Serial.println("[WiFi] Will retry in the loop.");
+    Serial.printf("[WiFi] Status: %d — will retry.\n", WiFi.status());
   }
 }
 
 // ============================================================
 // Read the ESP32 internal temperature sensor
 // ============================================================
-float readTemperature() {
-  // Reads the chip's internal temperature (not ambient)
-  float temp = temperatureRead();
-  return temp;
-}
+float readTemperature() { return temperatureRead(); }
 
 // ============================================================
 // Read the soil moisture sensor (analog on D34)
 // Returns 0-100 where 100 = fully wet, 0 = completely dry
 // ============================================================
 int readMoisture() {
-  // Raw ADC: 0 (wet / sensor in water) to ~4095 (dry / sensor in air)
   int raw = analogRead(MOISTURE_PIN);
-  // Invert and map to 0-100%
   int percent = map(raw, 4095, 0, 0, 100);
-  percent = constrain(percent, 0, 100);
-  return percent;
+  return constrain(percent, 0, 100);
 }
 
 // ============================================================
@@ -187,13 +267,13 @@ void sendSensorData(float temperature, int moisture) {
   http.begin(url);
   http.addHeader("Content-Type", "application/json");
 
-  // Build JSON payload
   String payload = "{";
   payload += "\"device_id\":\"esp32c3-01\",";
   payload += "\"temperature\":" + String(temperature, 1) + ",";
   payload += "\"moisture\":" + String(moisture) + ",";
   payload += "\"rssi\":" + String(WiFi.RSSI()) + ",";
-  payload += "\"uptime\":" + String(millis() / 1000);
+  payload += "\"uptime\":" + String(millis() / 1000) + ",";
+  payload += "\"boot_count\":" + String(bootCount);
   payload += "}";
 
   int httpCode = http.POST(payload);
@@ -209,7 +289,7 @@ void sendSensorData(float temperature, int moisture) {
 }
 
 // ============================================================
-// Blink the LED a given number of times
+// Blink the LED
 // ============================================================
 void blinkLED(int times, int delayMs) {
   for (int i = 0; i < times; i++) {
