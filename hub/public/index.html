@@ -22,7 +22,6 @@
             --accent-purple: #ab47bc;
             --accent-teal: #26c6da;
             --glow-blue: rgba(79, 195, 247, 0.15);
-            --glow-green: rgba(102, 187, 106, 0.15);
         }
 
         * {
@@ -36,7 +35,6 @@
             background: var(--bg-primary);
             color: var(--text-primary);
             min-height: 100vh;
-            overflow-x: hidden;
         }
 
         body::before {
@@ -62,7 +60,6 @@
             z-index: 1;
         }
 
-        /* Header */
         header {
             text-align: center;
             margin-bottom: 2rem;
@@ -155,6 +152,9 @@
             color: var(--text-secondary);
             cursor: pointer;
             transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         .device-tab:hover {
@@ -166,6 +166,30 @@
             background: rgba(79, 195, 247, 0.12);
             color: var(--accent-blue);
             border-color: rgba(79, 195, 247, 0.3);
+        }
+
+        /* Color swatch in tab */
+        .color-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+        }
+
+        .color-picker-wrap {
+            position: relative;
+            display: inline-block;
+        }
+
+        .color-picker-wrap input[type="color"] {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
         }
 
         /* Metric cards */
@@ -269,7 +293,7 @@
             color: var(--text-muted);
         }
 
-        /* Chart + toolbar */
+        /* Chart section */
         .chart-section {
             background: var(--bg-card);
             border: 1px solid var(--border);
@@ -324,14 +348,35 @@
 
         canvas#moistureChart {
             width: 100% !important;
-            height: 280px !important;
+            height: 300px !important;
         }
 
-        /* Tabs bar for chart/table toggle */
+        /* Legend */
+        .chart-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-top: 0.8rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+        }
+
+        .legend-line {
+            width: 20px;
+            height: 3px;
+            border-radius: 2px;
+        }
+
+        /* View tabs */
         .view-tabs {
             display: flex;
             gap: 0;
-            margin-bottom: 1rem;
         }
 
         .view-tab {
@@ -390,7 +435,6 @@
         .data-table td {
             padding: 0.5rem 0.8rem;
             border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-            color: var(--text-primary);
         }
 
         .data-table tr:hover td {
@@ -479,7 +523,6 @@
 
         .feed-data {
             font-size: 0.8rem;
-            color: var(--text-primary);
             flex: 1;
         }
 
@@ -541,10 +584,6 @@
                 grid-template-columns: repeat(2, 1fr);
                 gap: 0.8rem;
             }
-
-            .metric-card {
-                padding: 1rem;
-            }
         }
     </style>
 </head>
@@ -562,11 +601,11 @@
 
         <!-- Device tabs -->
         <div class="device-tabs" id="deviceTabs">
-            <div class="device-tab active" data-device="all">All Devices</div>
+            <div class="device-tab active" data-device="all">📊 All Devices</div>
         </div>
 
-        <!-- Metric cards -->
-        <div class="metrics-grid">
+        <!-- Metric cards (hidden on All Devices view) -->
+        <div class="metrics-grid" id="metricsGrid">
             <div class="metric-card moisture">
                 <div class="metric-label">💧 Soil Moisture</div>
                 <div class="metric-value" id="moistureValue">--<span class="metric-unit">%</span></div>
@@ -597,9 +636,12 @@
         <!-- Chart / Table section -->
         <div class="chart-section">
             <div class="chart-header">
-                <div class="view-tabs">
-                    <div class="view-tab active" data-view="chart">📈 Chart</div>
-                    <div class="view-tab" data-view="table">📋 Table</div>
+                <div style="display:flex;align-items:center;gap:1rem;">
+                    <span class="chart-title" id="chartTitle">💧 Moisture — All Devices</span>
+                    <div class="view-tabs" id="viewTabsWrap">
+                        <div class="view-tab active" data-view="chart">📈 Chart</div>
+                        <div class="view-tab" data-view="table">📋 Table</div>
+                    </div>
                 </div>
                 <div class="chart-toolbar">
                     <span style="font-size:0.75rem;color:var(--text-muted)" id="chartInfo">0 points</span>
@@ -607,12 +649,11 @@
                 </div>
             </div>
 
-            <!-- Chart view -->
             <div id="chartView">
                 <canvas id="moistureChart"></canvas>
+                <div class="chart-legend" id="chartLegend"></div>
             </div>
 
-            <!-- Table view -->
             <div id="tableView" class="hidden">
                 <div class="data-table-wrap">
                     <table class="data-table">
@@ -632,8 +673,8 @@
             </div>
         </div>
 
-        <!-- Live feed -->
-        <div class="feed-section">
+        <!-- Live feed (hidden in All Devices view) -->
+        <div class="feed-section" id="feedSection">
             <div class="feed-title">📋 Live Feed</div>
             <div id="feedList" class="feed-list">
                 <div class="empty-state">
@@ -650,16 +691,67 @@
         const MAX_FEED_ITEMS = 50;
         const POLL_INTERVAL = 1000;
 
+        const DEFAULT_COLORS = [
+            '#26c6da', '#66bb6a', '#ffa726', '#ef5350', '#ab47bc',
+            '#4fc3f7', '#ffee58', '#ec407a', '#7e57c2', '#26a69a'
+        ];
+
         // ── State ──
-        const feedList = document.getElementById('feedList');
-        let chartData = { labels: [], moistures: [], temps: [] };
-        let totalPackets = 0;
-        let hasData = false;
-        let canvas, ctx;
         let activeDevice = 'all';
         let activeView = 'chart';
-        let lastTimestamp = null;
-        let knownDevices = new Set();
+        let hasData = false;
+        let canvas, ctx;
+        let lastTimestamps = {};  // per-device last timestamp
+        let deviceColors = JSON.parse(localStorage.getItem('deviceColors') || '{}');
+
+        // Per-device data: { deviceId: { history[], sensorName, count } }
+        const deviceData = {};
+        let totalPackets = 0;
+
+        // ── Helpers ──
+        function moistureQuality(m) {
+            if (m >= 70) return '🟢 Wet';
+            if (m >= 40) return '🟢 Good';
+            if (m >= 20) return '🟡 Dry';
+            return '🔴 Very dry';
+        }
+        function rssiQuality(r) {
+            if (r >= -50) return '🟢 Excellent';
+            if (r >= -60) return '🟢 Good';
+            if (r >= -70) return '🟡 Fair';
+            return '🔴 Weak';
+        }
+        function formatUptime(s) {
+            if (s < 60) return s + 's';
+            if (s < 3600) return Math.floor(s / 60) + 'm ' + (s % 60) + 's';
+            return Math.floor(s / 3600) + 'h ' + Math.floor((s % 3600) / 60) + 'm';
+        }
+        function timeStr(ts) {
+            return ts ? new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+
+        function getDeviceColor(deviceId) {
+            if (deviceColors[deviceId]) return deviceColors[deviceId];
+            const ids = Object.keys(deviceData);
+            const idx = ids.indexOf(deviceId);
+            return DEFAULT_COLORS[idx % DEFAULT_COLORS.length];
+        }
+
+        function setDeviceColor(deviceId, color) {
+            deviceColors[deviceId] = color;
+            localStorage.setItem('deviceColors', JSON.stringify(deviceColors));
+            drawChart();
+            updateLegend();
+            updateDeviceTabs();
+        }
+
+        function getOrCreateDeviceData(deviceId, sensorName) {
+            if (!deviceData[deviceId]) {
+                deviceData[deviceId] = { history: [], sensorName: sensorName || deviceId, count: 0 };
+            }
+            if (sensorName) deviceData[deviceId].sensorName = sensorName;
+            return deviceData[deviceId];
+        }
 
         // ── Chart ──
         function initChart() {
@@ -671,8 +763,8 @@
 
         function resizeCanvas() {
             const rect = canvas.parentElement.getBoundingClientRect();
-            canvas.width = rect.width - 48;
-            canvas.height = 280;
+            canvas.width = rect.width;
+            canvas.height = 300;
             drawChart();
         }
 
@@ -680,13 +772,32 @@
             if (!ctx) return;
             const w = canvas.width, h = canvas.height;
             const pad = { top: 20, right: 20, bottom: 35, left: 50 };
-
             ctx.clearRect(0, 0, w, h);
 
-            const points = chartData.moistures;
-            document.getElementById('chartInfo').textContent = `${points.length} / ${MAX_CHART_POINTS} points`;
+            const plotW = w - pad.left - pad.right;
+            const plotH = h - pad.top - pad.bottom;
 
-            if (points.length < 2) {
+            // Determine which devices to draw
+            const deviceIds = activeDevice === 'all'
+                ? Object.keys(deviceData)
+                : [activeDevice];
+
+            // Collect all moisture points to find Y range
+            let allPoints = [];
+            let maxLen = 0;
+            for (const id of deviceIds) {
+                const d = deviceData[id];
+                if (!d) continue;
+                const pts = d.history.map(h => h.moisture ?? null).filter(m => m !== null);
+                allPoints = allPoints.concat(pts);
+                maxLen = Math.max(maxLen, d.history.length);
+            }
+
+            let totalPoints = 0;
+            for (const id of deviceIds) { totalPoints += (deviceData[id]?.history.length || 0); }
+            document.getElementById('chartInfo').textContent = `${totalPoints} points`;
+
+            if (allPoints.length < 2) {
                 ctx.fillStyle = '#555577';
                 ctx.font = '14px Inter, sans-serif';
                 ctx.textAlign = 'center';
@@ -694,71 +805,75 @@
                 return;
             }
 
-            const plotW = w - pad.left - pad.right;
-            const plotH = h - pad.top - pad.bottom;
-            const minV = Math.max(0, Math.min(...points) - 5);
-            const maxV = Math.min(100, Math.max(...points) + 5);
+            const minV = Math.max(0, Math.min(...allPoints) - 5);
+            const maxV = Math.min(100, Math.max(...allPoints) + 5);
             const range = maxV - minV || 1;
 
-            // Grid
+            // Grid + Y labels
             ctx.strokeStyle = 'rgba(255,255,255,0.05)';
             ctx.lineWidth = 1;
             for (let i = 0; i <= 5; i++) {
                 const y = pad.top + (plotH / 5) * i;
+                ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(w - pad.right, y); ctx.stroke();
+                ctx.fillStyle = '#555577'; ctx.font = '11px Inter'; ctx.textAlign = 'right';
+                ctx.fillText((maxV - (range / 5) * i).toFixed(0) + '%', pad.left - 8, y + 4);
+            }
+
+            // Draw lines for each device
+            for (const id of deviceIds) {
+                const d = deviceData[id];
+                if (!d || d.history.length < 2) continue;
+
+                const points = d.history.map(h => h.moisture ?? 0);
+                const color = getDeviceColor(id);
+                const n = points.length;
+
+                // Gradient fill (only for single device view)
+                if (deviceIds.length === 1) {
+                    const grad = ctx.createLinearGradient(0, pad.top, 0, h - pad.bottom);
+                    grad.addColorStop(0, color + '40');
+                    grad.addColorStop(1, color + '00');
+                    ctx.beginPath();
+                    ctx.moveTo(pad.left, h - pad.bottom);
+                    for (let i = 0; i < n; i++) {
+                        const x = pad.left + (plotW / (n - 1)) * i;
+                        const y = pad.top + plotH - ((points[i] - minV) / range) * plotH;
+                        ctx.lineTo(x, y);
+                    }
+                    ctx.lineTo(pad.left + (plotW / (n - 1)) * (n - 1), h - pad.bottom);
+                    ctx.closePath();
+                    ctx.fillStyle = grad;
+                    ctx.fill();
+                }
+
+                // Line
                 ctx.beginPath();
-                ctx.moveTo(pad.left, y);
-                ctx.lineTo(w - pad.right, y);
+                for (let i = 0; i < n; i++) {
+                    const x = pad.left + (plotW / (n - 1)) * i;
+                    const y = pad.top + plotH - ((points[i] - minV) / range) * plotH;
+                    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                }
+                ctx.strokeStyle = color;
+                ctx.lineWidth = deviceIds.length > 1 ? 2 : 2.5;
+                ctx.lineJoin = 'round';
                 ctx.stroke();
-                const val = maxV - (range / 5) * i;
-                ctx.fillStyle = '#555577';
-                ctx.font = '11px Inter, sans-serif';
-                ctx.textAlign = 'right';
-                ctx.fillText(val.toFixed(0) + '%', pad.left - 8, y + 4);
+
+                // Endpoint dot
+                const lastX = pad.left + (plotW / (n - 1)) * (n - 1);
+                const lastY = pad.top + plotH - ((points[n - 1] - minV) / range) * plotH;
+                ctx.beginPath(); ctx.arc(lastX, lastY, 4, 0, Math.PI * 2);
+                ctx.fillStyle = color; ctx.fill();
+                ctx.beginPath(); ctx.arc(lastX, lastY, 8, 0, Math.PI * 2);
+                ctx.fillStyle = color + '33'; ctx.fill();
             }
 
-            // Gradient fill
-            const grad = ctx.createLinearGradient(0, pad.top, 0, h - pad.bottom);
-            grad.addColorStop(0, 'rgba(38, 198, 218, 0.25)');
-            grad.addColorStop(1, 'rgba(38, 198, 218, 0.0)');
-
-            ctx.beginPath();
-            ctx.moveTo(pad.left, h - pad.bottom);
-            for (let i = 0; i < points.length; i++) {
-                const x = pad.left + (plotW / (points.length - 1)) * i;
-                const y = pad.top + plotH - ((points[i] - minV) / range) * plotH;
-                ctx.lineTo(x, y);
+            // X labels (from the device with the most history)
+            let longestId = deviceIds[0];
+            for (const id of deviceIds) {
+                if (deviceData[id] && deviceData[id].history.length > (deviceData[longestId]?.history.length || 0)) longestId = id;
             }
-            ctx.lineTo(pad.left + plotW, h - pad.bottom);
-            ctx.closePath();
-            ctx.fillStyle = grad;
-            ctx.fill();
-
-            // Line
-            ctx.beginPath();
-            for (let i = 0; i < points.length; i++) {
-                const x = pad.left + (plotW / (points.length - 1)) * i;
-                const y = pad.top + plotH - ((points[i] - minV) / range) * plotH;
-                if (i === 0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
-            }
-            ctx.strokeStyle = '#26c6da';
-            ctx.lineWidth = 2;
-            ctx.lineJoin = 'round';
-            ctx.stroke();
-
-            // Glow dot on latest
-            const lastX = pad.left + plotW;
-            const lastY = pad.top + plotH - ((points[points.length - 1] - minV) / range) * plotH;
-            ctx.beginPath(); ctx.arc(lastX, lastY, 4, 0, Math.PI * 2);
-            ctx.fillStyle = '#26c6da'; ctx.fill();
-            ctx.beginPath(); ctx.arc(lastX, lastY, 9, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(38, 198, 218, 0.2)'; ctx.fill();
-
-            // Dynamic X labels
-            const labels = chartData.labels;
-            ctx.fillStyle = '#555577';
-            ctx.font = '10px Inter, sans-serif';
-            ctx.textAlign = 'center';
+            const labels = (deviceData[longestId]?.history || []).map(h => timeStr(h.timestamp));
+            ctx.fillStyle = '#555577'; ctx.font = '10px Inter'; ctx.textAlign = 'center';
             const maxLabels = Math.min(8, labels.length);
             const step = Math.max(1, Math.floor(labels.length / maxLabels));
             for (let i = 0; i < labels.length; i += step) {
@@ -767,68 +882,88 @@
             }
         }
 
-        // ── Helpers ──
-        function moistureQuality(m) {
-            if (m >= 70) return '🟢 Wet';
-            if (m >= 40) return '🟢 Good';
-            if (m >= 20) return '🟡 Dry';
-            return '🔴 Very dry — needs water!';
-        }
-        function rssiQuality(r) {
-            if (r >= -50) return '🟢 Excellent';
-            if (r >= -60) return '🟢 Good';
-            if (r >= -70) return '🟡 Fair';
-            if (r >= -80) return '🟠 Weak';
-            return '🔴 Very weak';
-        }
-        function formatUptime(s) {
-            if (s < 60) return s + 's';
-            if (s < 3600) return Math.floor(s / 60) + 'm ' + (s % 60) + 's';
-            const hr = Math.floor(s / 3600);
-            const mn = Math.floor((s % 3600) / 60);
-            return hr + 'h ' + mn + 'm';
-        }
-        function timeLabel() {
-            return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        // ── Legend ──
+        function updateLegend() {
+            const legend = document.getElementById('chartLegend');
+            legend.innerHTML = '';
+            for (const [id, d] of Object.entries(deviceData)) {
+                const color = getDeviceColor(id);
+                const item = document.createElement('div');
+                item.className = 'legend-item';
+                item.innerHTML = `
+                    <span class="legend-line" style="background:${color}"></span>
+                    <span>${d.sensorName}</span>
+                    <span style="color:var(--text-muted);font-size:0.7rem">(${d.history.length})</span>
+                `;
+                legend.appendChild(item);
+            }
         }
 
         // ── Device tabs ──
-        function refreshDeviceTabs(devices) {
+        function updateDeviceTabs() {
             const container = document.getElementById('deviceTabs');
-            const deviceIds = Object.keys(devices);
+            container.innerHTML = '';
 
-            for (const id of deviceIds) {
-                if (!knownDevices.has(id)) {
-                    knownDevices.add(id);
-                    const tab = document.createElement('div');
-                    tab.className = 'device-tab';
-                    tab.dataset.device = id;
-                    tab.textContent = id;
-                    tab.addEventListener('click', () => selectDevice(id));
-                    container.appendChild(tab);
-                }
+            // "All Devices" tab
+            const allTab = document.createElement('div');
+            allTab.className = 'device-tab' + (activeDevice === 'all' ? ' active' : '');
+            allTab.dataset.device = 'all';
+            allTab.textContent = '📊 All Devices';
+            allTab.addEventListener('click', () => selectDevice('all'));
+            container.appendChild(allTab);
+
+            // Per-device tabs
+            for (const [id, d] of Object.entries(deviceData)) {
+                const tab = document.createElement('div');
+                tab.className = 'device-tab' + (activeDevice === id ? ' active' : '');
+                tab.dataset.device = id;
+
+                const color = getDeviceColor(id);
+                tab.innerHTML = `
+                    <div class="color-picker-wrap">
+                        <span class="color-dot" style="background:${color}"></span>
+                        <input type="color" value="${color}" title="Pick color for ${d.sensorName}">
+                    </div>
+                    ${d.sensorName}
+                `;
+
+                const picker = tab.querySelector('input[type="color"]');
+                picker.addEventListener('input', (e) => {
+                    e.stopPropagation();
+                    setDeviceColor(id, e.target.value);
+                });
+                picker.addEventListener('click', (e) => e.stopPropagation());
+
+                tab.addEventListener('click', () => selectDevice(id));
+                container.appendChild(tab);
             }
         }
 
         function selectDevice(deviceId) {
             activeDevice = deviceId;
-            document.querySelectorAll('.device-tab').forEach(t => {
-                t.classList.toggle('active', t.dataset.device === deviceId);
-            });
-            // Update CSV link
-            const csvBtn = document.getElementById('csvBtn');
-            csvBtn.href = deviceId === 'all' ? '/api/export/csv' : `/api/export/csv?device=${deviceId}`;
-            // Reload history for this device
-            chartData = { labels: [], moistures: [], temps: [] };
-            totalPackets = 0;
-            lastTimestamp = null;
-            loadHistory();
+            updateDeviceTabs();
+
+            // Toggle visibility
+            const isAll = deviceId === 'all';
+            document.getElementById('metricsGrid').classList.toggle('hidden', isAll);
+            document.getElementById('feedSection').classList.toggle('hidden', isAll);
+            document.getElementById('chartTitle').textContent = isAll
+                ? '💧 Moisture — All Devices'
+                : `💧 Moisture — ${deviceData[deviceId]?.sensorName || deviceId}`;
+
+            // CSV link
+            document.getElementById('csvBtn').href = isAll ? '/api/export/csv' : `/api/export/csv?device=${deviceId}`;
+
+            // Redraw
+            if (!isAll && deviceData[deviceId]?.history.length) {
+                updateMetrics(deviceData[deviceId].history.at(-1));
+            }
+            drawChart();
+            updateLegend();
+            rebuildTable();
         }
 
-        // Init 'All' tab click
-        document.querySelector('.device-tab[data-device="all"]').addEventListener('click', () => selectDevice('all'));
-
-        // ── View tabs (chart / table) ──
+        // ── View tabs ──
         document.querySelectorAll('.view-tab').forEach(tab => {
             tab.addEventListener('click', () => {
                 activeView = tab.dataset.view;
@@ -839,68 +974,62 @@
             });
         });
 
-        // ── Update UI ──
+        // ── Metrics ──
         function updateMetrics(data) {
             if (!hasData) {
                 hasData = true;
-                const badge = document.getElementById('statusBadge');
-                badge.classList.remove('waiting');
-                badge.classList.add('connected');
+                document.getElementById('statusBadge').classList.remove('waiting');
+                document.getElementById('statusBadge').classList.add('connected');
                 document.getElementById('statusText').textContent = 'Receiving data';
             }
-
-            document.getElementById('moistureValue').innerHTML =
-                (data.moisture != null ? data.moisture : '--') + '<span class="metric-unit">%</span>';
-            document.getElementById('moistureQuality').textContent =
-                data.moisture != null ? moistureQuality(data.moisture) : 'No data';
-
-            document.getElementById('tempValue').innerHTML =
-                (data.temperature != null ? data.temperature.toFixed(1) : '--') + '<span class="metric-unit">°C</span>';
-
-            document.getElementById('rssiValue').innerHTML =
-                (data.rssi != null ? data.rssi : '--') + '<span class="metric-unit"> dBm</span>';
-            document.getElementById('rssiQuality').textContent =
-                data.rssi != null ? rssiQuality(data.rssi) : 'No data';
-
-            document.getElementById('uptimeValue').textContent =
-                data.uptime != null ? formatUptime(data.uptime) : '--';
-            document.getElementById('uptimeSub').textContent =
-                data.uptime != null ? data.uptime + ' seconds' : 'No data';
+            document.getElementById('moistureValue').innerHTML = (data.moisture ?? '--') + '<span class="metric-unit">%</span>';
+            document.getElementById('moistureQuality').textContent = data.moisture != null ? moistureQuality(data.moisture) : 'No data';
+            document.getElementById('tempValue').innerHTML = (data.temperature != null ? data.temperature.toFixed(1) : '--') + '<span class="metric-unit">°C</span>';
+            document.getElementById('rssiValue').innerHTML = (data.rssi ?? '--') + '<span class="metric-unit"> dBm</span>';
+            document.getElementById('rssiQuality').textContent = data.rssi != null ? rssiQuality(data.rssi) : 'No data';
+            document.getElementById('uptimeValue').textContent = data.uptime != null ? formatUptime(data.uptime) : '--';
+            document.getElementById('uptimeSub').textContent = data.uptime != null ? data.uptime + ' seconds' : 'No data';
         }
 
-        function addChartPoint(data) {
-            totalPackets++;
-            document.getElementById('packetsValue').textContent = totalPackets;
-            document.getElementById('packetsSub').textContent = 'Last: ' + new Date().toLocaleTimeString();
+        // ── Table ──
+        function addTableRow(data) {
+            const tbody = document.getElementById('tableBody');
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${timeStr(data.timestamp)}</td>
+                <td>${data.sensor_name || data.device_id || '--'}</td>
+                <td class="val-moisture">${data.moisture ?? '--'}%</td>
+                <td class="val-temp">${data.temperature?.toFixed(1) ?? '--'}°C</td>
+                <td class="val-rssi">${data.rssi ?? '--'} dBm</td>
+                <td>${data.uptime != null ? formatUptime(data.uptime) : '--'}</td>
+            `;
+            tbody.insertBefore(row, tbody.firstChild);
+            while (tbody.children.length > MAX_CHART_POINTS) tbody.removeChild(tbody.lastChild);
+        }
 
-            const tl = data.timestamp
-                ? new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-                : timeLabel();
-
-            chartData.labels.push(tl);
-            chartData.moistures.push(data.moisture ?? 0);
-            chartData.temps.push(data.temperature ?? 0);
-
-            while (chartData.labels.length > MAX_CHART_POINTS) {
-                chartData.labels.shift();
-                chartData.moistures.shift();
-                chartData.temps.shift();
+        function rebuildTable() {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+            const ids = activeDevice === 'all' ? Object.keys(deviceData) : [activeDevice];
+            const rows = [];
+            for (const id of ids) {
+                if (!deviceData[id]) continue;
+                for (const d of deviceData[id].history) rows.push(d);
             }
-
-            if (activeView === 'chart') drawChart();
-            updateTable(data);
+            rows.sort((a, b) => b.receivedAt - a.receivedAt);
+            for (const d of rows.slice(0, MAX_CHART_POINTS)) addTableRow(d);
         }
 
+        // ── Feed ──
         function addFeedItem(data) {
-            const html = feedList.innerHTML;
-            if (html.includes('empty-state')) feedList.innerHTML = '';
-
-            const tl = timeLabel();
+            const feedList = document.getElementById('feedList');
+            if (feedList.querySelector('.empty-state')) feedList.innerHTML = '';
             const item = document.createElement('div');
             item.className = 'feed-item';
+            const name = data.sensor_name || data.device_id || 'unknown';
             item.innerHTML = `
-                <span class="feed-time">${tl}</span>
-                <span class="feed-device">${data.device_id || 'unknown'}</span>
+                <span class="feed-time">${timeStr()}</span>
+                <span class="feed-device">${name}</span>
                 <span class="feed-data">
                     <span>💧 <span class="val moisture-val">${data.moisture ?? '--'}%</span></span>
                     <span>🌡️ <span class="val temp-val">${data.temperature?.toFixed(1) ?? '--'}°C</span></span>
@@ -911,46 +1040,82 @@
             while (feedList.children.length > MAX_FEED_ITEMS) feedList.removeChild(feedList.lastChild);
         }
 
-        function updateTable(data) {
-            const tbody = document.getElementById('tableBody');
-            const tl = data.timestamp
-                ? new Date(data.timestamp).toLocaleTimeString()
-                : new Date().toLocaleTimeString();
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${tl}</td>
-                <td>${data.device_id || '--'}</td>
-                <td class="val-moisture">${data.moisture ?? '--'}%</td>
-                <td class="val-temp">${data.temperature?.toFixed(1) ?? '--'}°C</td>
-                <td class="val-rssi">${data.rssi ?? '--'} dBm</td>
-                <td>${data.uptime != null ? formatUptime(data.uptime) : '--'}</td>
-            `;
-            tbody.insertBefore(row, tbody.firstChild);
-            // Keep table trimmed
-            while (tbody.children.length > MAX_CHART_POINTS) tbody.removeChild(tbody.lastChild);
+        // ── Add data point ──
+        function ingestPoint(data) {
+            const id = data.device_id || 'unknown';
+            const d = getOrCreateDeviceData(id, data.sensor_name);
+            d.history.push(data);
+            d.count++;
+            while (d.history.length > MAX_CHART_POINTS) d.history.shift();
+
+            totalPackets++;
+            document.getElementById('packetsValue').textContent = totalPackets;
+            document.getElementById('packetsSub').textContent = 'Last: ' + timeStr();
         }
 
-        // ── Load history on init / device switch ──
+        // ── Load history ──
         async function loadHistory() {
             try {
-                const url = activeDevice === 'all'
-                    ? `/api/sensor-data/history?limit=${MAX_CHART_POINTS}`
-                    : `/api/sensor-data/history?device=${activeDevice}&limit=${MAX_CHART_POINTS}`;
-                const res = await fetch(url);
+                const res = await fetch(`/api/sensor-data/history?limit=${MAX_CHART_POINTS}`);
                 const history = await res.json();
-                // Clear table
-                document.getElementById('tableBody').innerHTML = '';
-                for (const d of history) {
-                    addChartPoint(d);
-                }
-                if (history.length > 0) {
-                    updateMetrics(history[history.length - 1]);
-                    lastTimestamp = history[history.length - 1].timestamp;
+                for (const d of history) ingestPoint(d);
+                updateDeviceTabs();
+                drawChart();
+                updateLegend();
+                rebuildTable();
+                if (history.length) {
+                    const last = history[history.length - 1];
+                    if (activeDevice !== 'all') updateMetrics(last);
+                    for (const id of Object.keys(deviceData)) {
+                        const h = deviceData[id].history;
+                        if (h.length) lastTimestamps[id] = h[h.length - 1].timestamp;
+                    }
                 }
             } catch (_) { }
         }
 
-        // ── Fetch stats ──
+        // ── Poll ──
+        async function poll() {
+            try {
+                const devRes = await fetch('/api/devices');
+                const devices = await devRes.json();
+
+                let needsRedraw = false;
+                for (const [id, info] of Object.entries(devices)) {
+                    getOrCreateDeviceData(id, info.sensorName);
+
+                    // Fetch latest for each device
+                    const latestRes = await fetch(`/api/sensor-data/latest?device=${id}`);
+                    const data = await latestRes.json();
+
+                    if (data && data.timestamp && data.timestamp !== lastTimestamps[id]) {
+                        lastTimestamps[id] = data.timestamp;
+                        ingestPoint(data);
+                        needsRedraw = true;
+
+                        if (activeDevice === id || activeDevice === 'all') {
+                            if (activeDevice !== 'all') updateMetrics(data);
+                            addFeedItem(data);
+                            addTableRow(data);
+                        }
+                    }
+                }
+
+                if (needsRedraw) {
+                    updateDeviceTabs();
+                    drawChart();
+                    updateLegend();
+                }
+            } catch (_) { }
+        }
+
+        // ── Init ──
+        initChart();
+        selectDevice('all');
+        loadHistory();
+        setInterval(poll, POLL_INTERVAL);
+
+        // Stats fetch
         async function fetchStats() {
             try {
                 const url = activeDevice === 'all' ? '/api/stats' : `/api/stats?device=${activeDevice}`;
@@ -962,37 +1127,7 @@
                 }
             } catch (_) { }
         }
-
-        // ── Poll ──
-        async function poll() {
-            try {
-                // Update device tabs
-                const devRes = await fetch('/api/devices');
-                const devices = await devRes.json();
-                refreshDeviceTabs(devices);
-
-                // Get latest data
-                const url = activeDevice === 'all'
-                    ? '/api/sensor-data/latest'
-                    : `/api/sensor-data/latest?device=${activeDevice}`;
-                const res = await fetch(url);
-                const data = await res.json();
-
-                if (data && data.timestamp && data.timestamp !== lastTimestamp) {
-                    lastTimestamp = data.timestamp;
-                    updateMetrics(data);
-                    addChartPoint(data);
-                    addFeedItem(data);
-                    fetchStats();
-                }
-            } catch (_) { }
-        }
-
-        // ── Init ──
-        initChart();
-        loadHistory();
-        setInterval(poll, POLL_INTERVAL);
-        poll();
+        setInterval(fetchStats, 5000);
     </script>
 </body>
 

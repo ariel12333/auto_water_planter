@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const payload = require('./lib/payload');
 
 const app = express();
 const PORT = 8080;
@@ -15,8 +16,6 @@ const MAX_HISTORY_PER_DEVICE = 1000;
 
 // ── In-memory sensor data store (per-device) ────────────────
 const deviceStore = {};
-// deviceStore[deviceId] = { latest, history[], count }
-
 let totalReceived = 0;
 
 function getOrCreateDevice(deviceId) {
@@ -25,7 +24,8 @@ function getOrCreateDevice(deviceId) {
       latest: null,
       history: [],
       count: 0,
-      firstSeen: new Date().toISOString()
+      firstSeen: new Date().toISOString(),
+      sensorName: null
     };
   }
   return deviceStore[deviceId];
@@ -33,36 +33,32 @@ function getOrCreateDevice(deviceId) {
 
 // ── API: Receive sensor data from ESP32 ─────────────────────
 app.post('/api/sensor-data', (req, res) => {
-  const data = {
-    ...req.body,
-    timestamp: new Date().toISOString(),
-    receivedAt: Date.now()
-  };
+  const data = payload.parse(req.body);
 
-  const deviceId = data.device_id || 'unknown';
+  const deviceId = data.device_id;
   const device = getOrCreateDevice(deviceId);
 
   device.latest = data;
   device.history.push(data);
   device.count++;
+  device.sensorName = data.sensor_name || device.sensorName || deviceId;
   totalReceived++;
 
-  // Trim history per device
   if (device.history.length > MAX_HISTORY_PER_DEVICE) {
     device.history = device.history.slice(-MAX_HISTORY_PER_DEVICE);
   }
 
-  console.log(`[${new Date().toLocaleTimeString()}] 📡 ${deviceId}: temp=${data.temperature}°C moisture=${data.moisture ?? '--'}% rssi=${data.rssi}dBm`);
+  const name = payload.displayName(data);
+  console.log(`[${new Date().toLocaleTimeString()}] 📡 ${name} (${deviceId}): moisture=${data.moisture ?? '--'}% temp=${data.temperature}°C rssi=${data.rssi}dBm`);
   res.json({ status: 'ok', received: totalReceived });
 });
 
-// ── API: Get latest data (global or per-device) ─────────────
+// ── API: Get latest data ────────────────────────────────────
 app.get('/api/sensor-data/latest', (req, res) => {
   const deviceId = req.query.device;
   if (deviceId && deviceStore[deviceId]) {
     return res.json(deviceStore[deviceId].latest);
   }
-  // Return latest across all devices
   let latest = null;
   for (const d of Object.values(deviceStore)) {
     if (!latest || (d.latest && d.latest.receivedAt > latest.receivedAt)) {
@@ -72,7 +68,7 @@ app.get('/api/sensor-data/latest', (req, res) => {
   res.json(latest || { message: 'No data received yet' });
 });
 
-// ── API: Get history (per-device or all) ────────────────────
+// ── API: Get history ────────────────────────────────────────
 app.get('/api/sensor-data/history', (req, res) => {
   const deviceId = req.query.device;
   const limit = parseInt(req.query.limit) || MAX_HISTORY_PER_DEVICE;
@@ -81,7 +77,6 @@ app.get('/api/sensor-data/history', (req, res) => {
     return res.json(deviceStore[deviceId].history.slice(-limit));
   }
 
-  // Merge all device histories, sorted by receivedAt
   const all = Object.values(deviceStore)
     .flatMap(d => d.history)
     .sort((a, b) => a.receivedAt - b.receivedAt);
@@ -93,6 +88,7 @@ app.get('/api/devices', (req, res) => {
   const devices = {};
   for (const [id, d] of Object.entries(deviceStore)) {
     devices[id] = {
+      sensorName: d.sensorName || id,
       lastSeen: d.latest?.timestamp,
       count: d.count,
       firstSeen: d.firstSeen,
@@ -102,7 +98,7 @@ app.get('/api/devices', (req, res) => {
   res.json(devices);
 });
 
-// ── API: Get stats (global or per-device) ───────────────────
+// ── API: Get stats ──────────────────────────────────────────
 app.get('/api/stats', (req, res) => {
   const deviceId = req.query.device;
   const history = deviceId && deviceStore[deviceId]
@@ -118,13 +114,11 @@ app.get('/api/stats', (req, res) => {
     historySize: history.length,
     maxHistory: MAX_HISTORY_PER_DEVICE,
     temperature: temps.length > 0 ? {
-      min: Math.min(...temps),
-      max: Math.max(...temps),
+      min: Math.min(...temps), max: Math.max(...temps),
       avg: (temps.reduce((a, b) => a + b, 0) / temps.length).toFixed(1)
     } : null,
     moisture: moistures.length > 0 ? {
-      min: Math.min(...moistures),
-      max: Math.max(...moistures),
+      min: Math.min(...moistures), max: Math.max(...moistures),
       avg: (moistures.reduce((a, b) => a + b, 0) / moistures.length).toFixed(1)
     } : null
   });
@@ -141,17 +135,12 @@ app.get('/api/export/csv', (req, res) => {
     return res.status(404).send('No data to export');
   }
 
-  const header = 'timestamp,device_id,temperature,moisture,rssi,uptime,boot_count';
-  const rows = history.map(d =>
-    `${d.timestamp},${d.device_id || ''},${d.temperature ?? ''},${d.moisture ?? ''},${d.rssi ?? ''},${d.uptime ?? ''},${d.boot_count ?? ''}`
-  );
-
-  const csv = [header, ...rows].join('\n');
+  const rows = [payload.csvHeader(), ...history.map(d => payload.toCSVRow(d))];
   const filename = deviceId ? `sensor_data_${deviceId}.csv` : 'sensor_data_all.csv';
 
   res.setHeader('Content-Type', 'text/csv');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-  res.send(csv);
+  res.send(rows.join('\n'));
 });
 
 // Start

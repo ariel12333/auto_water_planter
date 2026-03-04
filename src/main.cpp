@@ -17,6 +17,7 @@
  */
 
 #include "config.h"
+#include "payload.h"
 #include <Arduino.h>
 #include <HTTPClient.h>
 #include <WiFi.h>
@@ -267,14 +268,9 @@ void sendSensorData(float temperature, int moisture) {
   http.begin(url);
   http.addHeader("Content-Type", "application/json");
 
-  String payload = "{";
-  payload += "\"device_id\":\"esp32c3-01\",";
-  payload += "\"temperature\":" + String(temperature, 1) + ",";
-  payload += "\"moisture\":" + String(moisture) + ",";
-  payload += "\"rssi\":" + String(WiFi.RSSI()) + ",";
-  payload += "\"uptime\":" + String(millis() / 1000) + ",";
-  payload += "\"boot_count\":" + String(bootCount);
-  payload += "}";
+  // Build payload using the shared payload library
+  String payload = Payload::build(DEVICE_ID, SENSOR_NAME, temperature, moisture,
+                                  WiFi.RSSI(), millis() / 1000, bootCount);
 
   int httpCode = http.POST(payload);
 

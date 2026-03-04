@@ -1,0 +1,48 @@
+{
+    "version": "1.0",
+    "description": "ESP32 Sensor Hub payload schema — single source of truth",
+    "fields": [
+        {
+            "name": "device_id",
+            "type": "string",
+            "required": true,
+            "description": "Unique hardware identifier"
+        },
+        {
+            "name": "sensor_name",
+            "type": "string",
+            "required": false,
+            "description": "Human-readable name (e.g. Garden, Pot 1)"
+        },
+        {
+            "name": "temperature",
+            "type": "number",
+            "required": false,
+            "description": "Chip temperature in °C"
+        },
+        {
+            "name": "moisture",
+            "type": "integer",
+            "required": false,
+            "description": "Soil moisture 0-100%"
+        },
+        {
+            "name": "rssi",
+            "type": "integer",
+            "required": false,
+            "description": "WiFi signal strength in dBm"
+        },
+        {
+            "name": "uptime",
+            "type": "integer",
+            "required": false,
+            "description": "Seconds since boot"
+        },
+        {
+            "name": "boot_count",
+            "type": "integer",
+            "required": false,
+            "description": "Number of boots (survives deep sleep)"
+        }
+    ]
+}

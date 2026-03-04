@@ -18,6 +18,14 @@
 #define HUB_ENDPOINT "/api/sensor-data"
 
 // ============================================================
+// Device Identity
+// ============================================================
+// Unique hardware ID (used for data routing)
+#define DEVICE_ID "YOUR_DEVICE_ID"
+// Human-readable name shown on the dashboard (e.g. "Garden", "Pot 1")
+#define SENSOR_NAME "YOUR_SENSOR_NAME"
+
+// ============================================================
 // Sensor Configuration
 // ============================================================
 // How often to read + send sensor data (in seconds)
