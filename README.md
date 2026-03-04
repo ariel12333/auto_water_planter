@@ -22,10 +22,10 @@ Reads soil moisture via an analog sensor, displays live data on a self-hosted da
 git clone https://github.com/ariel12333/auto_water_planter.git
 cd auto_water_planter
 
-# Create your config from the template
-cp include/config.h.example include/config.h
-# Edit with your WiFi credentials and hub IP
-nano include/config.h
+# Create your JSON config from the template
+cp data/config.example.json data/config.json
+# Edit with your WiFi credentials, board ID, and sensors
+nano data/config.json
 ```
 
 ### 2. Flash the ESP32
@@ -33,7 +33,8 @@ nano include/config.h
 Requires [PlatformIO CLI](https://platformio.org/install/cli).
 
 ```bash
-pio run --target upload    # Build & flash
+pio run --target uploadfs  # Flash the LittleFS filesystem (contains config.json)
+pio run --target upload    # Build & flash firmware
 pio device monitor         # View serial output
 ```
 
@@ -71,13 +72,18 @@ The pump connects through the relay using a **separate 5V power supply** (not th
 ## Project Structure
 
 ```
-├── src/main.cpp              # ESP32 firmware
-├── include/config.h.example  # Config template (WiFi, hub IP)
-├── platformio.ini            # PlatformIO build config
+├── src/main.cpp                 # ESP32 firmware
+├── include/config.h             # C++ config reader & macros
+├── include/payload.h            # C++ Payload builder
+├── data/config.example.json     # JSON config template (WiFi, hub IP, sensors)
+├── platformio.ini               # PlatformIO build config
+├── shared/payload_schema.json   # Single source of truth for payload fields
+├── manage_server.py             # Python script to manage the Docker server
 └── hub/
-    ├── server.js             # Express API server
-    ├── public/index.html     # Real-time dashboard
-    └── Dockerfile            # Lightweight Alpine container
+    ├── server.js                # Express API server
+    ├── lib/payload.js           # Server-side payload parser
+    ├── public/index.html        # Real-time dashboard
+    └── Dockerfile               # Lightweight Alpine container
 ```
 
 ## License

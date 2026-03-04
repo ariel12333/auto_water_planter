@@ -58,22 +58,8 @@ public:
   String name;
   Payload payload;
 
+  Board() {}
   Board(String id, String n) : device_id(id), name(n) {}
-
-  // Initialize state of sensors (add them to the payload)
-  void init_sensors(int moisture_pin, float moisture_val) {
-    payload.sensors.clear();
-
-    // Add the moisture sensor
-    Sensor mSensor;
-    mSensor.name = "Moisture";
-    mSensor.measurement = moisture_val;
-    mSensor.units = "%";
-    mSensor.channel_in = moisture_pin;
-    mSensor.channel_out = -1; // Unused
-
-    payload.addSensor(mSensor);
-  }
 
   // Create the final JSON payload containing inherent sensors and the custom
   // payload array

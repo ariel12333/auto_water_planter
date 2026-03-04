@@ -26,3 +26,7 @@ node_modules/
 
 # Secrets (use config.h.example as template)
 include/config.h
+
+# Ignore real configs, but allow examples
+data/*.json
+.example.json
