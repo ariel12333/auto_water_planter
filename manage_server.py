@@ -30,18 +30,23 @@ def clear_data():
     print("Data cleared. Run 'start' to boot a fresh instance.")
 
 def main():
+    actions = {
+        "start": start_server,
+        "stop": stop_server,
+        "clear-data": clear_data
+    }
+
     parser = argparse.ArgumentParser(description="Manage the ESP32 Sensor Hub server.")
-    parser.add_argument("action", choices=["start", "stop", "clear-data"], 
+    parser.add_argument("action", choices=list(actions.keys()), 
                         help="Action to perform: 'start' (starts the server), 'stop' (stops the server), 'clear-data' (wipes all history and stops the server)")
     
     args = parser.parse_args()
 
-    if args.action == "start":
-        start_server()
-    elif args.action == "stop":
-        stop_server()
-    elif args.action == "clear-data":
-        clear_data()
+    # Execute the chosen action
+    if args.action in actions:
+        actions[args.action]()
+    else:
+        print(f"Unknown action: {args.action}")
 
 if __name__ == "__main__":
     main()
