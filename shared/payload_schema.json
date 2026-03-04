@@ -1,48 +1,63 @@
 {
-    "version": "1.0",
-    "description": "ESP32 Sensor Hub payload schema — single source of truth",
-    "fields": [
+    "version": "2.0",
+    "description": "ESP32 Sensor Hub structured payload schema (OOP)",
+    "board_fields": [
         {
             "name": "device_id",
             "type": "string",
-            "required": true,
             "description": "Unique hardware identifier"
         },
         {
             "name": "sensor_name",
             "type": "string",
-            "required": false,
-            "description": "Human-readable name (e.g. Garden, Pot 1)"
+            "description": "Human-readable name (e.g. Garden)"
         },
         {
             "name": "temperature",
             "type": "number",
-            "required": false,
             "description": "Chip temperature in °C"
-        },
-        {
-            "name": "moisture",
-            "type": "integer",
-            "required": false,
-            "description": "Soil moisture 0-100%"
         },
         {
             "name": "rssi",
             "type": "integer",
-            "required": false,
             "description": "WiFi signal strength in dBm"
         },
         {
             "name": "uptime",
             "type": "integer",
-            "required": false,
             "description": "Seconds since boot"
         },
         {
             "name": "boot_count",
             "type": "integer",
-            "required": false,
-            "description": "Number of boots (survives deep sleep)"
+            "description": "Number of boots"
+        }
+    ],
+    "sensor_fields": [
+        {
+            "name": "name",
+            "type": "string",
+            "description": "Name of the sensor feature (e.g. Moisture)"
+        },
+        {
+            "name": "measurement",
+            "type": "number",
+            "description": "Calculated value"
+        },
+        {
+            "name": "units",
+            "type": "string",
+            "description": "Measurement unit (e.g. '%', 'C')"
+        },
+        {
+            "name": "channel_in",
+            "type": "integer",
+            "description": "Input GPIO pin"
+        },
+        {
+            "name": "channel_out",
+            "type": "integer",
+            "description": "Output/Power GPIO pin (if any)"
         }
     ]
 }

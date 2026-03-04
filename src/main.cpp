@@ -54,6 +54,9 @@ RTC_DATA_ATTR int bootCount = 0;
 unsigned long lastSensorRead = 0;
 bool ledState = false;
 
+// Our OOP board representation
+Board board(DEVICE_ID, SENSOR_NAME);
+
 // ============================================================
 // Setup — runs once on boot (and on every deep sleep wake)
 // ============================================================
@@ -86,6 +89,9 @@ void setup() {
 
   // Connect to WiFi
   connectWiFi();
+
+  // Initialize sensors for the payload
+  board.init_sensors(MOISTURE_PIN, 0.0);
 
   Serial.println();
   Serial.println("Setup complete!");
@@ -268,9 +274,11 @@ void sendSensorData(float temperature, int moisture) {
   http.begin(url);
   http.addHeader("Content-Type", "application/json");
 
-  // Build payload using the shared payload library
-  String payload = Payload::build(DEVICE_ID, SENSOR_NAME, temperature, moisture,
-                                  WiFi.RSSI(), millis() / 1000, bootCount);
+  // Build payload using our OOP Board class
+  // Make sure to updat the internal sensor values before building
+  board.init_sensors(MOISTURE_PIN, moisture);
+  String payload = board.create_payload(temperature, WiFi.RSSI(),
+                                        millis() / 1000, bootCount);
 
   int httpCode = http.POST(payload);
 

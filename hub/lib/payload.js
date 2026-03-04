@@ -1,36 +1,42 @@
 /**
- * Payload parser/builder for the ESP32 Sensor Hub.
- * Field names match shared/payload_schema.json.
- *
- * To add a new sensor field:
- *   1. Add it to shared/payload_schema.json
- *   2. Add it to FIELDS below
- *   3. Add a line in include/payload.h on the ESP32 side
+ * OOP Payload parser/builder for the ESP32 Sensor Hub.
+ * Handles the nested format: { device_id: "...", sensors: [ { name: "Moisture", measurement: 45, units: "%" } ] }
  */
 
-const FIELDS = [
-    { name: 'device_id', type: 'string', required: true },
-    { name: 'sensor_name', type: 'string', required: false },
-    { name: 'temperature', type: 'number', required: false },
-    { name: 'moisture', type: 'number', required: false },
-    { name: 'rssi', type: 'number', required: false },
-    { name: 'uptime', type: 'number', required: false },
-    { name: 'boot_count', type: 'number', required: false },
-];
+const BOARD_FIELDS = ['device_id', 'sensor_name', 'temperature', 'rssi', 'uptime', 'boot_count'];
 
 /**
  * Parse and normalize incoming sensor data.
- * Adds timestamp + receivedAt. Returns the enriched object.
+ * Flattens the nested `sensors` array into the root object for dashboard compatibility.
+ * e.g. { sensors: [ { name: "Moisture", measurement: 45 } ] } -> { moisture: 45 }
  */
 function parse(body) {
     const data = {};
 
-    for (const f of FIELDS) {
-        if (body[f.name] !== undefined) {
-            data[f.name] = body[f.name];
-        } else if (f.required) {
-            data[f.name] = f.type === 'string' ? 'unknown' : 0;
+    // Extract inherent board fields
+    for (const f of BOARD_FIELDS) {
+        if (body[f] !== undefined) {
+            data[f] = body[f];
         }
+    }
+
+    // Fallback defaults
+    if (!data.device_id) data.device_id = 'unknown';
+    if (!data.sensor_name) data.sensor_name = data.device_id;
+
+    // Flatten the dynamic sensors array
+    if (Array.isArray(body.sensors)) {
+        for (const s of body.sensors) {
+            if (s.name && s.measurement !== undefined) {
+                // Lowercase the name for the frontend (e.g. "Moisture" -> "moisture")
+                const key = s.name.toLowerCase();
+                data[key] = s.measurement;
+                // Could also save units: data[`${key}_units`] = s.units;
+            }
+        }
+    } else {
+        // Legacy fallback (just in case)
+        if (body.moisture !== undefined) data.moisture = body.moisture;
     }
 
     data.timestamp = new Date().toISOString();
@@ -40,23 +46,25 @@ function parse(body) {
 
 /**
  * CSV header row.
+ * We include the known board fields + moisture by default, but this could be dynamic.
  */
 function csvHeader() {
-    return FIELDS.map(f => f.name).join(',');
+    return [...BOARD_FIELDS, 'moisture', 'timestamp'].join(',');
 }
 
 /**
  * Convert a data object to a CSV row.
  */
 function toCSVRow(data) {
-    return FIELDS.map(f => data[f.name] ?? '').join(',');
+    const allFields = [...BOARD_FIELDS, 'moisture', 'timestamp'];
+    return allFields.map(f => data[f] ?? '').join(',');
 }
 
 /**
- * Get the display name for a device (sensor_name or device_id fallback).
+ * Get the display name for a device.
  */
 function displayName(data) {
     return data.sensor_name || data.device_id || 'unknown';
 }
 
-module.exports = { FIELDS, parse, csvHeader, toCSVRow, displayName };
+module.exports = { parse, csvHeader, toCSVRow, displayName };
