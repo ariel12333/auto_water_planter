@@ -39,7 +39,6 @@
             overflow-x: hidden;
         }
 
-        /* Background gradient animation */
         body::before {
             content: '';
             position: fixed;
@@ -66,7 +65,7 @@
         /* Header */
         header {
             text-align: center;
-            margin-bottom: 2.5rem;
+            margin-bottom: 2rem;
         }
 
         header h1 {
@@ -137,19 +136,51 @@
             }
         }
 
-        /* Metric cards grid */
+        /* Device tabs */
+        .device-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .device-tab {
+            padding: 0.5rem 1.2rem;
+            border-radius: 10px;
+            font-size: 0.82rem;
+            font-weight: 500;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .device-tab:hover {
+            background: var(--bg-card-hover);
+            color: var(--text-primary);
+        }
+
+        .device-tab.active {
+            background: rgba(79, 195, 247, 0.12);
+            color: var(--accent-blue);
+            border-color: rgba(79, 195, 247, 0.3);
+        }
+
+        /* Metric cards */
         .metrics-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 1.2rem;
-            margin-bottom: 2rem;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
         }
 
         .metric-card {
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: 16px;
-            padding: 1.5rem;
+            padding: 1.3rem;
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
@@ -171,6 +202,10 @@
             border-radius: 2px 2px 0 0;
         }
 
+        .metric-card.moisture::after {
+            background: linear-gradient(90deg, var(--accent-teal), var(--accent-green));
+        }
+
         .metric-card.temp::after {
             background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
         }
@@ -183,32 +218,28 @@
             background: linear-gradient(90deg, var(--accent-orange), var(--accent-red));
         }
 
-        .metric-card.moisture::after {
-            background: linear-gradient(90deg, var(--accent-teal), var(--accent-green));
-        }
-
-        .metric-card.moisture .metric-value {
-            color: var(--accent-teal);
-        }
-
         .metric-card.packets::after {
             background: linear-gradient(90deg, var(--accent-purple), var(--accent-blue));
         }
 
         .metric-label {
-            font-size: 0.78rem;
+            font-size: 0.75rem;
             font-weight: 500;
             text-transform: uppercase;
             letter-spacing: 0.08em;
             color: var(--text-secondary);
-            margin-bottom: 0.6rem;
+            margin-bottom: 0.5rem;
         }
 
         .metric-value {
-            font-size: 2.4rem;
+            font-size: 2.2rem;
             font-weight: 700;
             line-height: 1.1;
-            margin-bottom: 0.3rem;
+            margin-bottom: 0.2rem;
+        }
+
+        .metric-card.moisture .metric-value {
+            color: var(--accent-teal);
         }
 
         .metric-card.temp .metric-value {
@@ -228,23 +259,23 @@
         }
 
         .metric-unit {
-            font-size: 1.1rem;
+            font-size: 1rem;
             font-weight: 400;
             opacity: 0.6;
         }
 
         .metric-sub {
-            font-size: 0.78rem;
+            font-size: 0.75rem;
             color: var(--text-muted);
         }
 
-        /* Chart area */
+        /* Chart + toolbar */
         .chart-section {
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: 16px;
             padding: 1.5rem;
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
         }
 
         .chart-header {
@@ -252,6 +283,8 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 0.5rem;
         }
 
         .chart-title {
@@ -259,27 +292,127 @@
             font-weight: 600;
         }
 
-        .chart-legend {
+        .chart-toolbar {
             display: flex;
-            gap: 1rem;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 0.4rem 0.9rem;
+            border-radius: 8px;
             font-size: 0.78rem;
+            font-weight: 500;
+            background: var(--bg-card-hover);
+            border: 1px solid var(--border);
             color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
         }
 
-        .legend-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 4px;
+        .btn:hover {
+            color: var(--text-primary);
+            border-color: var(--accent-blue);
         }
 
-        canvas#tempChart {
+        .btn.active {
+            background: rgba(79, 195, 247, 0.12);
+            color: var(--accent-blue);
+            border-color: rgba(79, 195, 247, 0.3);
+        }
+
+        canvas#moistureChart {
             width: 100% !important;
-            height: 250px !important;
+            height: 280px !important;
         }
 
-        /* Live feed */
+        /* Tabs bar for chart/table toggle */
+        .view-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 1rem;
+        }
+
+        .view-tab {
+            padding: 0.5rem 1.2rem;
+            font-size: 0.82rem;
+            font-weight: 500;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .view-tab:first-child {
+            border-radius: 8px 0 0 8px;
+        }
+
+        .view-tab:last-child {
+            border-radius: 0 8px 8px 0;
+        }
+
+        .view-tab.active {
+            background: rgba(79, 195, 247, 0.12);
+            color: var(--accent-blue);
+            border-color: rgba(79, 195, 247, 0.3);
+        }
+
+        /* Data table */
+        .data-table-wrap {
+            max-height: 400px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) transparent;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+
+        .data-table th {
+            text-align: left;
+            padding: 0.6rem 0.8rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            background: var(--bg-card);
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            letter-spacing: 0.05em;
+        }
+
+        .data-table td {
+            padding: 0.5rem 0.8rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            color: var(--text-primary);
+        }
+
+        .data-table tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .val-moisture {
+            color: var(--accent-teal);
+            font-weight: 600;
+        }
+
+        .val-temp {
+            color: var(--accent-blue);
+            font-weight: 600;
+        }
+
+        .val-rssi {
+            color: var(--accent-green);
+            font-weight: 600;
+        }
+
+        /* Feed */
         .feed-section {
             background: var(--bg-card);
             border: 1px solid var(--border);
@@ -294,7 +427,7 @@
         }
 
         .feed-list {
-            max-height: 300px;
+            max-height: 250px;
             overflow-y: auto;
             scrollbar-width: thin;
             scrollbar-color: var(--border) transparent;
@@ -304,7 +437,7 @@
             display: flex;
             align-items: center;
             gap: 1rem;
-            padding: 0.7rem 0.8rem;
+            padding: 0.6rem 0.8rem;
             border-radius: 10px;
             transition: background 0.2s;
             border-bottom: 1px solid rgba(255, 255, 255, 0.03);
@@ -328,30 +461,30 @@
         }
 
         .feed-time {
-            font-size: 0.75rem;
+            font-size: 0.72rem;
             color: var(--text-muted);
             font-family: 'Courier New', monospace;
             min-width: 70px;
         }
 
         .feed-device {
-            font-size: 0.75rem;
+            font-size: 0.72rem;
             color: var(--accent-purple);
             background: rgba(171, 71, 188, 0.1);
             padding: 0.15rem 0.5rem;
             border-radius: 6px;
-            min-width: 90px;
+            min-width: 80px;
             text-align: center;
         }
 
         .feed-data {
-            font-size: 0.82rem;
+            font-size: 0.8rem;
             color: var(--text-primary);
             flex: 1;
         }
 
         .feed-data span {
-            margin-right: 1rem;
+            margin-right: 0.8rem;
         }
 
         .feed-data .val {
@@ -362,11 +495,14 @@
             color: var(--accent-blue);
         }
 
+        .feed-data .moisture-val {
+            color: var(--accent-teal);
+        }
+
         .feed-data .rssi-val {
             color: var(--accent-green);
         }
 
-        /* Empty state */
         .empty-state {
             text-align: center;
             padding: 3rem 1rem;
@@ -384,7 +520,10 @@
             line-height: 1.6;
         }
 
-        /* Responsive */
+        .hidden {
+            display: none !important;
+        }
+
         @media (max-width: 600px) {
             .container {
                 padding: 1rem;
@@ -395,7 +534,7 @@
             }
 
             .metric-value {
-                font-size: 1.8rem;
+                font-size: 1.6rem;
             }
 
             .metrics-grid {
@@ -414,23 +553,29 @@
     <div class="container">
         <header>
             <h1>⚡ ESP32 Sensor Hub</h1>
-            <p>Real-time sensor data from your microcontroller</p>
+            <p>Real-time sensor data from your microcontrollers</p>
             <div class="status-badge waiting" id="statusBadge">
                 <span class="pulse-dot"></span>
                 <span id="statusText">Waiting for data...</span>
             </div>
         </header>
 
+        <!-- Device tabs -->
+        <div class="device-tabs" id="deviceTabs">
+            <div class="device-tab active" data-device="all">All Devices</div>
+        </div>
+
+        <!-- Metric cards -->
         <div class="metrics-grid">
-            <div class="metric-card temp">
-                <div class="metric-label">🌡️ Temperature</div>
-                <div class="metric-value" id="tempValue">--<span class="metric-unit">°C</span></div>
-                <div class="metric-sub" id="tempRange">No data</div>
-            </div>
             <div class="metric-card moisture">
                 <div class="metric-label">💧 Soil Moisture</div>
                 <div class="metric-value" id="moistureValue">--<span class="metric-unit">%</span></div>
                 <div class="metric-sub" id="moistureQuality">No data</div>
+            </div>
+            <div class="metric-card temp">
+                <div class="metric-label">🌡️ Temperature</div>
+                <div class="metric-value" id="tempValue">--<span class="metric-unit">°C</span></div>
+                <div class="metric-sub" id="tempRange">No data</div>
             </div>
             <div class="metric-card rssi">
                 <div class="metric-label">📶 WiFi Signal</div>
@@ -438,52 +583,87 @@
                 <div class="metric-sub" id="rssiQuality">No data</div>
             </div>
             <div class="metric-card uptime">
-                <div class="metric-label">⏱️ ESP32 Uptime</div>
+                <div class="metric-label">⏱️ Uptime</div>
                 <div class="metric-value" id="uptimeValue">--</div>
                 <div class="metric-sub" id="uptimeSub">No data</div>
             </div>
             <div class="metric-card packets">
-                <div class="metric-label">📡 Packets Received</div>
+                <div class="metric-label">📡 Packets</div>
                 <div class="metric-value" id="packetsValue">0</div>
                 <div class="metric-sub" id="packetsSub">Waiting...</div>
             </div>
         </div>
 
+        <!-- Chart / Table section -->
         <div class="chart-section">
             <div class="chart-header">
-                <span class="chart-title">📈 Temperature History</span>
-                <div class="chart-legend">
-                    <span><span class="legend-dot" style="background:var(--accent-blue)"></span>Temperature</span>
+                <div class="view-tabs">
+                    <div class="view-tab active" data-view="chart">📈 Chart</div>
+                    <div class="view-tab" data-view="table">📋 Table</div>
+                </div>
+                <div class="chart-toolbar">
+                    <span style="font-size:0.75rem;color:var(--text-muted)" id="chartInfo">0 points</span>
+                    <a class="btn" id="csvBtn" href="/api/export/csv" target="_blank">⬇ CSV</a>
                 </div>
             </div>
-            <canvas id="tempChart"></canvas>
+
+            <!-- Chart view -->
+            <div id="chartView">
+                <canvas id="moistureChart"></canvas>
+            </div>
+
+            <!-- Table view -->
+            <div id="tableView" class="hidden">
+                <div class="data-table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Device</th>
+                                <th>Moisture</th>
+                                <th>Temp</th>
+                                <th>RSSI</th>
+                                <th>Uptime</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
+            </div>
         </div>
 
+        <!-- Live feed -->
         <div class="feed-section">
             <div class="feed-title">📋 Live Feed</div>
             <div id="feedList" class="feed-list">
                 <div class="empty-state">
                     <div class="icon">📡</div>
-                    <p>No sensor data received yet.<br>Make sure your ESP32 is connected to WiFi and pointing to this
-                        hub.</p>
+                    <p>No sensor data received yet.<br>Make sure your ESP32 is connected and pointing to this hub.</p>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
+        // ── Config ──
+        const MAX_CHART_POINTS = 1000;
+        const MAX_FEED_ITEMS = 50;
+        const POLL_INTERVAL = 1000;
+
         // ── State ──
         const feedList = document.getElementById('feedList');
-        const MAX_FEED_ITEMS = 50;
-        const chartData = { labels: [], temps: [] };
-        const MAX_CHART_POINTS = 60;
+        let chartData = { labels: [], moistures: [], temps: [] };
         let totalPackets = 0;
         let hasData = false;
         let canvas, ctx;
+        let activeDevice = 'all';
+        let activeView = 'chart';
+        let lastTimestamp = null;
+        let knownDevices = new Set();
 
         // ── Chart ──
         function initChart() {
-            canvas = document.getElementById('tempChart');
+            canvas = document.getElementById('moistureChart');
             ctx = canvas.getContext('2d');
             resizeCanvas();
             window.addEventListener('resize', resizeCanvas);
@@ -492,134 +672,175 @@
         function resizeCanvas() {
             const rect = canvas.parentElement.getBoundingClientRect();
             canvas.width = rect.width - 48;
-            canvas.height = 250;
+            canvas.height = 280;
             drawChart();
         }
 
         function drawChart() {
             if (!ctx) return;
-            const w = canvas.width;
-            const h = canvas.height;
-            const padding = { top: 20, right: 20, bottom: 30, left: 50 };
+            const w = canvas.width, h = canvas.height;
+            const pad = { top: 20, right: 20, bottom: 35, left: 50 };
 
             ctx.clearRect(0, 0, w, h);
 
-            if (chartData.temps.length < 2) {
+            const points = chartData.moistures;
+            document.getElementById('chartInfo').textContent = `${points.length} / ${MAX_CHART_POINTS} points`;
+
+            if (points.length < 2) {
                 ctx.fillStyle = '#555577';
                 ctx.font = '14px Inter, sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText('Waiting for data...', w / 2, h / 2);
+                ctx.fillText('Waiting for moisture data...', w / 2, h / 2);
                 return;
             }
 
-            const plotW = w - padding.left - padding.right;
-            const plotH = h - padding.top - padding.bottom;
-            const temps = chartData.temps;
-            const minT = Math.min(...temps) - 1;
-            const maxT = Math.max(...temps) + 1;
-            const rangeT = maxT - minT || 1;
+            const plotW = w - pad.left - pad.right;
+            const plotH = h - pad.top - pad.bottom;
+            const minV = Math.max(0, Math.min(...points) - 5);
+            const maxV = Math.min(100, Math.max(...points) + 5);
+            const range = maxV - minV || 1;
 
-            // Grid lines
+            // Grid
             ctx.strokeStyle = 'rgba(255,255,255,0.05)';
             ctx.lineWidth = 1;
-            const gridLines = 5;
-            for (let i = 0; i <= gridLines; i++) {
-                const y = padding.top + (plotH / gridLines) * i;
+            for (let i = 0; i <= 5; i++) {
+                const y = pad.top + (plotH / 5) * i;
                 ctx.beginPath();
-                ctx.moveTo(padding.left, y);
-                ctx.lineTo(w - padding.right, y);
+                ctx.moveTo(pad.left, y);
+                ctx.lineTo(w - pad.right, y);
                 ctx.stroke();
-
-                // Y labels
-                const val = maxT - (rangeT / gridLines) * i;
+                const val = maxV - (range / 5) * i;
                 ctx.fillStyle = '#555577';
                 ctx.font = '11px Inter, sans-serif';
                 ctx.textAlign = 'right';
-                ctx.fillText(val.toFixed(1) + '°', padding.left - 8, y + 4);
+                ctx.fillText(val.toFixed(0) + '%', pad.left - 8, y + 4);
             }
 
             // Gradient fill
-            const gradient = ctx.createLinearGradient(0, padding.top, 0, h - padding.bottom);
-            gradient.addColorStop(0, 'rgba(79, 195, 247, 0.2)');
-            gradient.addColorStop(1, 'rgba(79, 195, 247, 0.0)');
+            const grad = ctx.createLinearGradient(0, pad.top, 0, h - pad.bottom);
+            grad.addColorStop(0, 'rgba(38, 198, 218, 0.25)');
+            grad.addColorStop(1, 'rgba(38, 198, 218, 0.0)');
 
             ctx.beginPath();
-            ctx.moveTo(padding.left, h - padding.bottom);
-            for (let i = 0; i < temps.length; i++) {
-                const x = padding.left + (plotW / (temps.length - 1)) * i;
-                const y = padding.top + plotH - ((temps[i] - minT) / rangeT) * plotH;
+            ctx.moveTo(pad.left, h - pad.bottom);
+            for (let i = 0; i < points.length; i++) {
+                const x = pad.left + (plotW / (points.length - 1)) * i;
+                const y = pad.top + plotH - ((points[i] - minV) / range) * plotH;
                 ctx.lineTo(x, y);
             }
-            ctx.lineTo(padding.left + plotW, h - padding.bottom);
+            ctx.lineTo(pad.left + plotW, h - pad.bottom);
             ctx.closePath();
-            ctx.fillStyle = gradient;
+            ctx.fillStyle = grad;
             ctx.fill();
 
             // Line
             ctx.beginPath();
-            for (let i = 0; i < temps.length; i++) {
-                const x = padding.left + (plotW / (temps.length - 1)) * i;
-                const y = padding.top + plotH - ((temps[i] - minT) / rangeT) * plotH;
+            for (let i = 0; i < points.length; i++) {
+                const x = pad.left + (plotW / (points.length - 1)) * i;
+                const y = pad.top + plotH - ((points[i] - minV) / range) * plotH;
                 if (i === 0) ctx.moveTo(x, y);
                 else ctx.lineTo(x, y);
             }
-            ctx.strokeStyle = '#4fc3f7';
-            ctx.lineWidth = 2.5;
+            ctx.strokeStyle = '#26c6da';
+            ctx.lineWidth = 2;
             ctx.lineJoin = 'round';
             ctx.stroke();
 
-            // Latest point glow
-            if (temps.length > 0) {
-                const lastX = padding.left + plotW;
-                const lastY = padding.top + plotH - ((temps[temps.length - 1] - minT) / rangeT) * plotH;
-                ctx.beginPath();
-                ctx.arc(lastX, lastY, 5, 0, Math.PI * 2);
-                ctx.fillStyle = '#4fc3f7';
-                ctx.fill();
-                ctx.beginPath();
-                ctx.arc(lastX, lastY, 10, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(79, 195, 247, 0.2)';
-                ctx.fill();
-            }
+            // Glow dot on latest
+            const lastX = pad.left + plotW;
+            const lastY = pad.top + plotH - ((points[points.length - 1] - minV) / range) * plotH;
+            ctx.beginPath(); ctx.arc(lastX, lastY, 4, 0, Math.PI * 2);
+            ctx.fillStyle = '#26c6da'; ctx.fill();
+            ctx.beginPath(); ctx.arc(lastX, lastY, 9, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(38, 198, 218, 0.2)'; ctx.fill();
 
-            // X labels (time)
+            // Dynamic X labels
+            const labels = chartData.labels;
             ctx.fillStyle = '#555577';
             ctx.font = '10px Inter, sans-serif';
             ctx.textAlign = 'center';
-            const labelStep = Math.max(1, Math.floor(chartData.labels.length / 6));
-            for (let i = 0; i < chartData.labels.length; i += labelStep) {
-                const x = padding.left + (plotW / (chartData.labels.length - 1)) * i;
-                ctx.fillText(chartData.labels[i], x, h - 8);
+            const maxLabels = Math.min(8, labels.length);
+            const step = Math.max(1, Math.floor(labels.length / maxLabels));
+            for (let i = 0; i < labels.length; i += step) {
+                const x = pad.left + (plotW / (labels.length - 1)) * i;
+                ctx.fillText(labels[i], x, h - 8);
             }
         }
 
-        // ── RSSI quality description ──
-        function rssiQuality(rssi) {
-            if (rssi >= -50) return '🟢 Excellent';
-            if (rssi >= -60) return '🟢 Good';
-            if (rssi >= -70) return '🟡 Fair';
-            if (rssi >= -80) return '🟠 Weak';
-            return '🔴 Very weak';
-        }
-
+        // ── Helpers ──
         function moistureQuality(m) {
             if (m >= 70) return '🟢 Wet';
             if (m >= 40) return '🟢 Good';
             if (m >= 20) return '🟡 Dry';
             return '🔴 Very dry — needs water!';
         }
-
-        // ── Format uptime ──
-        function formatUptime(seconds) {
-            if (seconds < 60) return seconds + 's';
-            if (seconds < 3600) return Math.floor(seconds / 60) + 'm ' + (seconds % 60) + 's';
-            const h = Math.floor(seconds / 3600);
-            const m = Math.floor((seconds % 3600) / 60);
-            return h + 'h ' + m + 'm';
+        function rssiQuality(r) {
+            if (r >= -50) return '🟢 Excellent';
+            if (r >= -60) return '🟢 Good';
+            if (r >= -70) return '🟡 Fair';
+            if (r >= -80) return '🟠 Weak';
+            return '🔴 Very weak';
+        }
+        function formatUptime(s) {
+            if (s < 60) return s + 's';
+            if (s < 3600) return Math.floor(s / 60) + 'm ' + (s % 60) + 's';
+            const hr = Math.floor(s / 3600);
+            const mn = Math.floor((s % 3600) / 60);
+            return hr + 'h ' + mn + 'm';
+        }
+        function timeLabel() {
+            return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         }
 
-        // ── Update UI with new data ──
-        function updateUI(data) {
+        // ── Device tabs ──
+        function refreshDeviceTabs(devices) {
+            const container = document.getElementById('deviceTabs');
+            const deviceIds = Object.keys(devices);
+
+            for (const id of deviceIds) {
+                if (!knownDevices.has(id)) {
+                    knownDevices.add(id);
+                    const tab = document.createElement('div');
+                    tab.className = 'device-tab';
+                    tab.dataset.device = id;
+                    tab.textContent = id;
+                    tab.addEventListener('click', () => selectDevice(id));
+                    container.appendChild(tab);
+                }
+            }
+        }
+
+        function selectDevice(deviceId) {
+            activeDevice = deviceId;
+            document.querySelectorAll('.device-tab').forEach(t => {
+                t.classList.toggle('active', t.dataset.device === deviceId);
+            });
+            // Update CSV link
+            const csvBtn = document.getElementById('csvBtn');
+            csvBtn.href = deviceId === 'all' ? '/api/export/csv' : `/api/export/csv?device=${deviceId}`;
+            // Reload history for this device
+            chartData = { labels: [], moistures: [], temps: [] };
+            totalPackets = 0;
+            lastTimestamp = null;
+            loadHistory();
+        }
+
+        // Init 'All' tab click
+        document.querySelector('.device-tab[data-device="all"]').addEventListener('click', () => selectDevice('all'));
+
+        // ── View tabs (chart / table) ──
+        document.querySelectorAll('.view-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                activeView = tab.dataset.view;
+                document.querySelectorAll('.view-tab').forEach(t => t.classList.toggle('active', t === tab));
+                document.getElementById('chartView').classList.toggle('hidden', activeView !== 'chart');
+                document.getElementById('tableView').classList.toggle('hidden', activeView !== 'table');
+                if (activeView === 'chart') drawChart();
+            });
+        });
+
+        // ── Update UI ──
+        function updateMetrics(data) {
             if (!hasData) {
                 hasData = true;
                 const badge = document.getElementById('statusBadge');
@@ -628,75 +849,112 @@
                 document.getElementById('statusText').textContent = 'Receiving data';
             }
 
-            totalPackets++;
-
-            // Metrics
-            document.getElementById('tempValue').innerHTML =
-                (data.temperature != null ? data.temperature.toFixed(1) : '--') +
-                '<span class="metric-unit">°C</span>';
-
             document.getElementById('moistureValue').innerHTML =
-                (data.moisture != null ? data.moisture : '--') +
-                '<span class="metric-unit">%</span>';
-
+                (data.moisture != null ? data.moisture : '--') + '<span class="metric-unit">%</span>';
             document.getElementById('moistureQuality').textContent =
                 data.moisture != null ? moistureQuality(data.moisture) : 'No data';
 
-            document.getElementById('rssiValue').innerHTML =
-                (data.rssi != null ? data.rssi : '--') +
-                '<span class="metric-unit"> dBm</span>';
+            document.getElementById('tempValue').innerHTML =
+                (data.temperature != null ? data.temperature.toFixed(1) : '--') + '<span class="metric-unit">°C</span>';
 
+            document.getElementById('rssiValue').innerHTML =
+                (data.rssi != null ? data.rssi : '--') + '<span class="metric-unit"> dBm</span>';
             document.getElementById('rssiQuality').textContent =
                 data.rssi != null ? rssiQuality(data.rssi) : 'No data';
 
             document.getElementById('uptimeValue').textContent =
                 data.uptime != null ? formatUptime(data.uptime) : '--';
-
             document.getElementById('uptimeSub').textContent =
                 data.uptime != null ? data.uptime + ' seconds' : 'No data';
+        }
 
+        function addChartPoint(data) {
+            totalPackets++;
             document.getElementById('packetsValue').textContent = totalPackets;
-            document.getElementById('packetsSub').textContent =
-                'Last: ' + new Date().toLocaleTimeString();
+            document.getElementById('packetsSub').textContent = 'Last: ' + new Date().toLocaleTimeString();
 
-            // Chart
-            const timeLabel = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            chartData.labels.push(timeLabel);
-            chartData.temps.push(data.temperature);
-            if (chartData.labels.length > MAX_CHART_POINTS) {
+            const tl = data.timestamp
+                ? new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                : timeLabel();
+
+            chartData.labels.push(tl);
+            chartData.moistures.push(data.moisture ?? 0);
+            chartData.temps.push(data.temperature ?? 0);
+
+            while (chartData.labels.length > MAX_CHART_POINTS) {
                 chartData.labels.shift();
+                chartData.moistures.shift();
                 chartData.temps.shift();
             }
-            drawChart();
 
-            // Feed
-            const feedHTML = feedList.innerHTML;
-            if (feedHTML.includes('empty-state')) feedList.innerHTML = '';
+            if (activeView === 'chart') drawChart();
+            updateTable(data);
+        }
 
+        function addFeedItem(data) {
+            const html = feedList.innerHTML;
+            if (html.includes('empty-state')) feedList.innerHTML = '';
+
+            const tl = timeLabel();
             const item = document.createElement('div');
             item.className = 'feed-item';
             item.innerHTML = `
-        <span class="feed-time">${timeLabel}</span>
-        <span class="feed-device">${data.device_id || 'unknown'}</span>
-        <span class="feed-data">
-          <span>🌡️ <span class="val temp-val">${data.temperature?.toFixed(1) ?? '--'}°C</span></span>
-          <span>💧 <span class="val" style="color:var(--accent-teal)">${data.moisture ?? '--'}%</span></span>
-          <span>📶 <span class="val rssi-val">${data.rssi ?? '--'} dBm</span></span>
-          <span>⏱️ ${data.uptime != null ? formatUptime(data.uptime) : '--'}</span>
-        </span>
-      `;
+                <span class="feed-time">${tl}</span>
+                <span class="feed-device">${data.device_id || 'unknown'}</span>
+                <span class="feed-data">
+                    <span>💧 <span class="val moisture-val">${data.moisture ?? '--'}%</span></span>
+                    <span>🌡️ <span class="val temp-val">${data.temperature?.toFixed(1) ?? '--'}°C</span></span>
+                    <span>📶 <span class="val rssi-val">${data.rssi ?? '--'} dBm</span></span>
+                </span>
+            `;
             feedList.insertBefore(item, feedList.firstChild);
-
-            // Trim feed
-            while (feedList.children.length > MAX_FEED_ITEMS) {
-                feedList.removeChild(feedList.lastChild);
-            }
+            while (feedList.children.length > MAX_FEED_ITEMS) feedList.removeChild(feedList.lastChild);
         }
 
-        // ── Fetch stats for temperature range ──
+        function updateTable(data) {
+            const tbody = document.getElementById('tableBody');
+            const tl = data.timestamp
+                ? new Date(data.timestamp).toLocaleTimeString()
+                : new Date().toLocaleTimeString();
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${tl}</td>
+                <td>${data.device_id || '--'}</td>
+                <td class="val-moisture">${data.moisture ?? '--'}%</td>
+                <td class="val-temp">${data.temperature?.toFixed(1) ?? '--'}°C</td>
+                <td class="val-rssi">${data.rssi ?? '--'} dBm</td>
+                <td>${data.uptime != null ? formatUptime(data.uptime) : '--'}</td>
+            `;
+            tbody.insertBefore(row, tbody.firstChild);
+            // Keep table trimmed
+            while (tbody.children.length > MAX_CHART_POINTS) tbody.removeChild(tbody.lastChild);
+        }
+
+        // ── Load history on init / device switch ──
+        async function loadHistory() {
+            try {
+                const url = activeDevice === 'all'
+                    ? `/api/sensor-data/history?limit=${MAX_CHART_POINTS}`
+                    : `/api/sensor-data/history?device=${activeDevice}&limit=${MAX_CHART_POINTS}`;
+                const res = await fetch(url);
+                const history = await res.json();
+                // Clear table
+                document.getElementById('tableBody').innerHTML = '';
+                for (const d of history) {
+                    addChartPoint(d);
+                }
+                if (history.length > 0) {
+                    updateMetrics(history[history.length - 1]);
+                    lastTimestamp = history[history.length - 1].timestamp;
+                }
+            } catch (_) { }
+        }
+
+        // ── Fetch stats ──
         async function fetchStats() {
             try {
-                const res = await fetch('/api/stats');
+                const url = activeDevice === 'all' ? '/api/stats' : `/api/stats?device=${activeDevice}`;
+                const res = await fetch(url);
                 const stats = await res.json();
                 if (stats.temperature) {
                     document.getElementById('tempRange').textContent =
@@ -705,16 +963,26 @@
             } catch (_) { }
         }
 
-        // ── Poll for new data ──
-        let lastTimestamp = null;
-
+        // ── Poll ──
         async function poll() {
             try {
-                const res = await fetch('/api/sensor-data/latest');
+                // Update device tabs
+                const devRes = await fetch('/api/devices');
+                const devices = await devRes.json();
+                refreshDeviceTabs(devices);
+
+                // Get latest data
+                const url = activeDevice === 'all'
+                    ? '/api/sensor-data/latest'
+                    : `/api/sensor-data/latest?device=${activeDevice}`;
+                const res = await fetch(url);
                 const data = await res.json();
+
                 if (data && data.timestamp && data.timestamp !== lastTimestamp) {
                     lastTimestamp = data.timestamp;
-                    updateUI(data);
+                    updateMetrics(data);
+                    addChartPoint(data);
+                    addFeedItem(data);
                     fetchStats();
                 }
             } catch (_) { }
@@ -722,7 +990,8 @@
 
         // ── Init ──
         initChart();
-        setInterval(poll, 1000);
+        loadHistory();
+        setInterval(poll, POLL_INTERVAL);
         poll();
     </script>
 </body>
